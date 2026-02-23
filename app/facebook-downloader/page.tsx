@@ -8,13 +8,15 @@ import styles from "../page-styles.module.css";
 const SITE_URL = "https://savemyreel.online";
 
 export const metadata: Metadata = {
-    title: "Facebook Video Downloader – Download FB Videos & Reels Free",
-    description: "Download Facebook videos and Reels for free in HD quality. Save FB videos to your phone or computer instantly. No login, no software needed. Works with public Facebook pages and profiles.",
+    title: "Facebook Video Downloader – Download FB Videos & Reels HD Free",
+    description: "Download Facebook videos, Reels, and live replays for free in HD quality. Save FB videos to your phone or computer instantly. No login, no app needed.",
     keywords: [
+        // Primary targets
         "facebook video downloader", "download facebook videos", "save facebook videos",
+        "facebook video download online", "free facebook video downloader",
+        // Supporting targets
         "facebook reel downloader", "download fb videos", "fb video saver",
-        "facebook video download online", "download facebook reels", "facebook video to mp4",
-        "free facebook video downloader", "save fb videos to phone",
+        "download facebook reels", "facebook video to mp4", "save fb videos to phone",
         "how to download facebook videos", "facebook HD video download",
         "facebook downloader", "fb downloader", "facebook video download",
         "save fb reels", "download facebook video online free", "fb video downloader online",
@@ -59,8 +61,7 @@ const faqJsonLd = {
 export default function FacebookDownloader() {
     return (
         <main>
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedJsonLd) }} />
             <Navbar />
             <div className={`container ${styles.pageContainer}`}>
                 <h1 className={styles.pageTitle}>Facebook Video Downloader</h1>
