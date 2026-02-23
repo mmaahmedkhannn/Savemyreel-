@@ -8,16 +8,17 @@ import styles from "../page-styles.module.css";
 const SITE_URL = "https://savemyreel.online";
 
 export const metadata: Metadata = {
-    title: "Instagram Video Downloader – Download Reels, Posts & Stories Free",
-    description: "Download Instagram Reels, videos, photos, and carousel posts for free in HD quality. No watermark, no login, no app needed. Save Instagram content to your phone or computer instantly with SaveMyReel.",
+    title: "Instagram Video Downloader – Download HD Reels & Stories Free",
+    description: "Download Instagram Reels, videos, photos, and carousel posts for free in HD quality. No watermark, no login, no app needed. Save Instagram content instantly.",
     keywords: [
-        "instagram downloader", "instagram video downloader", "download instagram reels",
-        "instagram reel downloader", "save instagram videos", "download insta videos",
-        "instagram photo downloader", "instagram carousel downloader", "instagram story downloader",
-        "download instagram reels without watermark", "instagram video download online",
-        "save instagram reels to phone", "how to download instagram reels",
-        "free instagram downloader", "instagram HD download", "download IG reels",
-        "instagram reels to mp4", "instagram reels saver", "download reels instagram",
+        // Primary targets
+        "instagram video downloader", "download instagram reels", "instagram downloader",
+        "save instagram videos", "download insta videos hd", "download instagram reels without watermark",
+        // Supporting targets
+        "instagram reel downloader", "instagram photo downloader", "instagram carousel downloader",
+        "instagram story downloader", "instagram video download online", "save instagram reels to phone",
+        "how to download instagram reels", "free instagram downloader", "instagram HD download",
+        "download IG reels", "instagram reels to mp4", "instagram reels saver", "download reels instagram",
         "save instagram reels", "instagram video saver", "insta reel download",
         "instagram content downloader", "save IG stories", "instagram downloader online free",
     ],
@@ -83,11 +84,7 @@ export default function InstagramDownloader() {
         <main>
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
-            />
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedJsonLd) }}
             />
             <Navbar />
             <div className={`container ${styles.pageContainer}`}>
