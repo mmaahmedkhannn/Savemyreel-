@@ -79,6 +79,21 @@ const faqJsonLd = {
     ]
 };
 
+const softwareJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "SaveMyReel Instagram Downloader",
+    "operatingSystem": "Any",
+    "applicationCategory": "MultimediaApplication",
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+    }
+};
+
+const combinedJsonLd = [howToJsonLd, faqJsonLd, softwareJsonLd];
+
 export default function InstagramDownloader() {
     return (
         <main>
