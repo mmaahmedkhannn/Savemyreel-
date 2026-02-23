@@ -8,21 +8,20 @@ import styles from "../page-styles.module.css";
 const SITE_URL = "https://savemyreel.online";
 
 export const metadata: Metadata = {
-    title: "TikTok Video Downloader Without Watermark – Free HD Download",
-    description: "Download TikTok videos without watermark for free in HD quality. Save TikTok clips to your phone or computer instantly. No app needed, no login required. Works on iPhone and Android.",
+    title: "TikTok Video Download Without Watermark – Free HD & Fast",
+    description: "Download TikTok videos without watermark online for free. Save HD TikToks, MP4s, and Slideshows to Android, iPhone or PC easily. No app or registration required.",
     keywords: [
-        "tiktok downloader", "tiktok video downloader", "download tiktok without watermark",
-        "tiktok downloader without watermark", "save tiktok videos", "tiktok mp4 download",
-        "tiktok video saver", "download tiktok videos free", "tiktok watermark remover",
-        "free tiktok downloader", "tiktok HD download", "save tiktok to phone",
-        "how to download tiktok without watermark", "tiktok video download online",
-        "free tiktok downloader no watermark", "tiktok video saver without watermark",
-        "remove tiktok watermark", "tiktok to mp4", "download tiktok MP4 without watermark",
-        "tiktok video download HD no watermark", "tiktok saver", "save tiktok no watermark",
+        // Primary targets
+        "tiktok video download without watermark", "tiktok downloader", "fastest tiktok downloader",
+        "download tiktok videos without watermark", "tiktok video download HD no watermark",
+        // Supporting targets
+        "tiktok saver", "tiktok MP4 HD", "tiktok watermark remover", "tiktok to mp4 free",
+        "save tiktok to phone", "free tiktok downloader no watermark", "tiktok slideshow download",
+        "how to download tiktok without watermark", "download tiktok MP4 without watermark"
     ],
     alternates: { canonical: `${SITE_URL}/tiktok-downloader` },
     openGraph: {
-        title: "TikTok Downloader Without Watermark – Free HD | SaveMyReel",
+        title: "TikTok Video Download Without Watermark – Free HD | SaveMyReel",
         description: "Download TikTok videos without watermark in HD. Free, fast, no login required.",
         images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630 }],
     },
@@ -65,8 +64,7 @@ const faqJsonLd = {
 export default function TikTokDownloader() {
     return (
         <main>
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedJsonLd) }} />
             <Navbar />
             <div className={`container ${styles.pageContainer}`}>
                 <h1 className={styles.pageTitle}>TikTok Video Downloader</h1>
