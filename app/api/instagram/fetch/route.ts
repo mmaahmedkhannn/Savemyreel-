@@ -41,28 +41,31 @@ export async function POST(request: NextRequest) {
         let media: MediaItem[] = [];
         let author = "Instagram User";
 
-        // Strategy 1: Direct Instagram GraphQL
+        // Strategy: Use instagram-url-direct
         try {
-            console.log("[Server] Strategy 1: Direct GraphQL...");
-            const result = await directGraphQL(shortcode);
-            media = result.media;
-            author = result.author;
-            console.log("[Server] Strategy 1 succeeded:", media.length, "items");
-        } catch (e: any) {
-            console.warn("[Server] Strategy 1 failed:", e.message);
-        }
+            console.log("[Server] Fetching via instagram-url-direct...");
+            const igGet = require('instagram-url-direct');
+            const result = await igGet.instagramGetUrl(cleanUrl);
 
-        // Strategy 2: Third-party API fallback
-        if (media.length === 0) {
-            try {
-                console.log("[Server] Strategy 2: Third-party API...");
-                const result = await thirdPartyExtract(cleanUrl);
-                media = result.media;
-                author = result.author;
-                console.log("[Server] Strategy 2 succeeded:", media.length, "items");
-            } catch (e: any) {
-                console.warn("[Server] Strategy 2 failed:", e.message);
+            if (result && result.results_number > 0 && result.url_list && result.url_list.length > 0) {
+                author = result.post_info?.owner_fullname || result.post_info?.owner_username || "Instagram User";
+
+                media = result.url_list.map((itemUrl: string, index: number) => {
+                    const isVideo = itemUrl.includes('.mp4') || itemUrl.includes('video');
+                    return {
+                        url: itemUrl,
+                        thumbnail: result.media_details?.[index]?.thumbnail || itemUrl,
+                        type: isVideo ? 'video' : 'image',
+                        filename: `instagram_${shortcode}_${index + 1}.${isVideo ? 'mp4' : 'jpg'}`,
+                        width: result.media_details?.[index]?.dimensions?.width,
+                        height: result.media_details?.[index]?.dimensions?.height
+                    };
+                });
+
+                console.log("[Server] Strategy succeeded:", media.length, "items");
             }
+        } catch (e: any) {
+            console.warn("[Server] instagram-url-direct failed:", e.message);
         }
 
         if (media.length === 0) {
