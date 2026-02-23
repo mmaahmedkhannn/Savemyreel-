@@ -11,11 +11,13 @@ export const metadata: Metadata = {
     title: "YouTube Video Downloader – Free HD MP4 Download Online",
     description: "Download YouTube videos for free in HD, 1080p, 4K quality. Convert YouTube to MP4 or MP3 instantly. No app needed, no login required. Works on all devices.",
     keywords: [
-        "youtube downloader", "youtube video downloader", "download youtube video",
+        // Primary targets
+        "youtube downloader", "free youtube video downloader online", "download youtube video",
+        "youtube video download online", "youtube 1080p download", "youtube to mp4 hd",
+        // Supporting targets
         "youtube to mp4", "youtube to mp3", "youtube mp4 download",
-        "free youtube downloader", "youtube video download online",
-        "download youtube videos free", "youtube HD download", "save youtube video",
-        "youtube 1080p download", "youtube 4K download", "youtube converter",
+        "free youtube downloader", "download youtube videos free", "youtube HD download",
+        "save youtube video", "youtube 4K download", "youtube converter",
         "youtube downloader online", "youtube video saver", "download youtube mp4 free",
         "youtube audio download", "youtube music download", "youtube to mp3 converter",
         "download youtube video HD", "youtube download no app",
@@ -75,8 +77,7 @@ const faqJsonLd = {
 export default function YouTubeDownloader() {
     return (
         <main>
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(combinedJsonLd) }} />
             <Navbar />
             <div className={`container ${styles.pageContainer}`}>
                 <h1 className={styles.pageTitle}>YouTube Video Downloader</h1>
