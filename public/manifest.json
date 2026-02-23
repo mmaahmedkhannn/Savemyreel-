@@ -1,0 +1,23 @@
+{
+    "name": "SaveMyReel",
+    "short_name": "SaveMyReel",
+    "description": "Free online video downloader for Instagram, TikTok, Facebook & X. Download reels, videos, and photos in HD quality — no watermark, no app requried.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a0f",
+    "theme_color": "#6c5ce7",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/favicon.ico",
+            "sizes": "any",
+            "type": "image/x-icon"
+        }
+    ],
+    "categories": [
+        "utilities",
+        "social"
+    ],
+    "lang": "en",
+    "scope": "/"
+}

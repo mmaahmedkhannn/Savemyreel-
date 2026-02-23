@@ -1,0 +1,270 @@
+.footer {
+    background: var(--secondary);
+    border-top: 1px solid var(--card-border);
+    padding: 4rem 0 2rem;
+    margin-top: auto;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animated gradient line at top */
+.footer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
+    background-size: 200% 100%;
+    animation: gradientSlide 4s ease infinite;
+}
+
+@keyframes gradientSlide {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+}
+
+.brand {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.brand h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.brand h3:hover {
+    transform: scale(1.02);
+}
+
+.tagline {
+    color: var(--secondary-foreground);
+    line-height: 1.6;
+    max-width: 300px;
+    animation: fadeIn 0.8s ease-out 0.2s backwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    animation: fadeInUp 0.6s ease-out backwards;
+}
+
+.links:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.links:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.links h4 {
+    color: var(--foreground);
+    margin-bottom: 0.5rem;
+    position: relative;
+    display: inline-block;
+}
+
+.links h4::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 30px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 1px;
+    animation: expandLine 0.8s ease-out 0.5s backwards;
+}
+
+@keyframes expandLine {
+    from {
+        width: 0;
+        opacity: 0;
+    }
+
+    to {
+        width: 30px;
+        opacity: 1;
+    }
+}
+
+.links a {
+    color: var(--secondary-foreground);
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: inline-block;
+    padding: 0.25rem 0;
+}
+
+.links a::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    height: 1px;
+    background: var(--primary);
+    transition: width 0.3s ease;
+}
+
+.links a:hover::before {
+    width: 100%;
+}
+
+.links a:hover {
+    color: var(--primary);
+    transform: translateX(5px);
+}
+
+.copyright {
+    border-top: 1px solid var(--card-border);
+    padding-top: 2rem;
+    text-align: center;
+    color: var(--secondary-foreground);
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    animation: fadeInUp 0.6s ease-out 0.3s backwards;
+    position: relative;
+}
+
+.copyright p:first-child {
+    transition: all 0.3s ease;
+}
+
+.copyright p:first-child:hover {
+    color: var(--primary);
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+}
+
+.disclaimer {
+    opacity: 0.6;
+    font-size: 0.8rem;
+    animation: fadeIn 1s ease-out 0.5s backwards;
+}
+
+@media (min-width: 768px) {
+    .grid {
+        grid-template-columns: 2fr 1fr 1fr;
+    }
+}
+
+/* ── Tablet ── */
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+
+    .brand {
+        grid-column: 1 / -1;
+    }
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+    .footer {
+        padding: 2.5rem 0 1.5rem;
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .container {
+        gap: 2rem;
+    }
+
+    .grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .brand {
+        grid-column: 1 / -1;
+    }
+
+    .brand h3 {
+        font-size: 1.25rem;
+        text-align: center;
+    }
+
+    .tagline {
+        max-width: 100%;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
+    .links {
+        align-items: center;
+        text-align: center;
+    }
+
+    .links a {
+        font-size: 0.9rem;
+        padding: 0.35rem 0;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .links a:hover {
+        transform: none;
+    }
+
+    .copyright {
+        padding-top: 1.5rem;
+        font-size: 0.8rem;
+    }
+
+    .disclaimer {
+        font-size: 0.75rem;
+    }
+}
