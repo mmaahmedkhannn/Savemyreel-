@@ -1,8 +1,8 @@
-import { Download, FileVideo, Image as ImageIcon } from "lucide-react";
+import { Download, FileVideo } from "lucide-react";
 import styles from "./DownloadResult.module.css";
 import clsx from "clsx";
 import { DownloadResult as DownloadResultType } from "@/types";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 /** Safely decode HTML entities like &#x642; back into standard text */
 function decodeHTMLEntities(text: string): string {
