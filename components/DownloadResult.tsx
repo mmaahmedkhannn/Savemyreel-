@@ -2,7 +2,19 @@ import { Download, FileVideo, Image as ImageIcon } from "lucide-react";
 import styles from "./DownloadResult.module.css";
 import clsx from "clsx";
 import { DownloadResult as DownloadResultType } from "@/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+/** Safely decode HTML entities like &#x642; back into standard text */
+function decodeHTMLEntities(text: string): string {
+    if (!text) return text;
+    if (typeof window === 'undefined') return text; // Bypass during SSR
+    try {
+        const doc = new DOMParser().parseFromString(text, "text/html");
+        return doc.documentElement.textContent || text;
+    } catch (e) {
+        return text;
+    }
+}
 
 interface Props {
     result: DownloadResultType;
@@ -121,7 +133,7 @@ export default function DownloadResult({ result, onReset }: Props) {
                 <div className={styles.meta}>
                     <span className={styles.platformBadge}>{result.platform}</span>
                     <h3 className={styles.title}>
-                        {result.title || "Media Found"}
+                        {decodeHTMLEntities(result.title || "Media Found")}
                         {hasCarousel && ` (${result.carouselItems!.length} items)`}
                     </h3>
                 </div>
