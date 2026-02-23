@@ -14,16 +14,15 @@ const SITE_DESCRIPTION = "Free online video downloader for Instagram, TikTok, Fa
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "SaveMyReel – Free Video Downloader for Instagram, TikTok, Facebook & X (2026)",
+    default: "SaveMyReel – Free Video Downloader for Instagram, TikTok & YouTube",
     template: "%s | SaveMyReel",
   },
-  description: SITE_DESCRIPTION,
+  description: "Free online video downloader for TikTok, Instagram, YouTube, and Facebook. Download HD videos, reels, and photos without watermark. No app required.",
   keywords: [
     // Core high-volume keywords
-    "video downloader", "free video downloader", "online video downloader",
-    "social media video downloader", "all in one video downloader",
+    "video downloader", "free video downloader", "online video downloader", "best free video downloader online",
+    "download video", "URL video downloader", "all video downloader", "social media video downloader",
     "save videos online", "HD video download", "download videos free",
-    "best video downloader 2026", "multi-platform video downloader",
     // Instagram — 135K+ monthly searches
     "instagram downloader", "instagram video downloader", "instagram reel downloader",
     "download instagram reels", "save instagram videos", "download insta videos",
@@ -67,8 +66,8 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   category: "Technology",
   openGraph: {
-    title: "SaveMyReel – Free Video Downloader | Instagram, TikTok, Facebook, X",
-    description: SITE_DESCRIPTION,
+    title: "SaveMyReel – Free Video Downloader | TikTok, Instagram, YouTube",
+    description: "Download TikTok videos without watermark, save Instagram Reels, and download YouTube to MP4 in HD for free.",
     type: "website",
     locale: "en_US",
     siteName: SITE_NAME,
@@ -159,6 +158,7 @@ const jsonLd = {
       "featureList": [
         "Instagram Video & Reel Download",
         "TikTok Video Download Without Watermark",
+        "YouTube HD Video Downloader",
         "Facebook Video & Reel Download",
         "Twitter/X Video & GIF Download",
         "HD Quality Downloads",
