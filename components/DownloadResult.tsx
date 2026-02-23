@@ -25,22 +25,16 @@ export default function DownloadResult({ result, onReset }: Props) {
     const qualityOptions = result.metadata?.qualityOptions as { label: string; url: string; quality: string; ext: string }[] | undefined;
 
     const handleDownload = (downloadFilename: string, formatOverride?: string) => {
-        if (!result.sourceUrl) {
-            console.error("[Download] No sourceUrl available, falling back to direct URL");
-            // Fallback: try direct URL download
-            const link = document.createElement('a');
-            link.href = result.url;
-            link.download = downloadFilename || 'download';
-            link.target = '_blank';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        const itemToDownload = hasCarousel ? result.carouselItems![selectedIndex] : result;
+        const targetUrl = itemToDownload.url;
+
+        if (!targetUrl) {
+            console.error("[Download] No URL available to download");
             return;
         }
 
-        // Use the server-side yt-dlp streaming endpoint for reliable downloads
-        const format = formatOverride || "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
-        const streamUrl = `/api/stream?url=${encodeURIComponent(result.sourceUrl)}&format=${encodeURIComponent(format)}&filename=${encodeURIComponent(downloadFilename || 'download.mp4')}`;
+        // Use the new server-side proxy endpoint to bypass CORS and force download
+        const streamUrl = `/api/stream?url=${encodeURIComponent(targetUrl)}&filename=${encodeURIComponent(downloadFilename || 'download.mp4')}`;
 
         // Open in new tab to trigger download without blocking UI
         window.open(streamUrl, '_blank');
