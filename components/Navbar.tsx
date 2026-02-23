@@ -23,7 +23,7 @@ export default function Navbar() {
                 </Link>
 
                 {/* Desktop Menu */}
-                <div className={styles.desktopMenu} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className={styles.desktopMenu}>
                     <Link href="/about" className={styles.link}>{t("nav.about")}</Link>
                     <Link href="/features" className={styles.link}>{t("nav.features")}</Link>
                     <Link href="/contact" className={styles.link}>{t("nav.contact")}</Link>
