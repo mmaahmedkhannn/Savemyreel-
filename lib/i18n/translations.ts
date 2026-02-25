@@ -60,12 +60,12 @@ const t: TranslationDict = {
         nl: "100% Gratis & Veilig", pl: "100% Darmowe i Bezpieczne", cs: "100% Zdarma a Bezpečně", ro: "100% Gratuit și Sigur", sv: "100% Gratis & Säkert", sk: "100% Zadarmo a Bezpečne", ms: "100% Percuma & Selamat", fa: "۱۰۰٪ رایگان و امن",
     },
     "hero.title1": {
-        en: "Download Videos from", es: "Descarga Videos de", fr: "Téléchargez des Vidéos des", de: "Videos herunterladen von", hi: "वीडियो डाउनलोड करें", ar: "تحميل الفيديوهات من", pt: "Baixe Vídeos de", ru: "Скачать Видео из",
-        ja: "動画をダウンロード", ko: "비디오 다운로드", zh: "下载视频", tr: "Videoları İndir", it: "Scarica Video da", id: "Unduh Video dari", vi: "Tải Video từ", th: "ดาวน์โหลดวิดีโอจาก",
-        nl: "Download Video's van", pl: "Pobierz Filmy z", cs: "Stahujte Videa z", ro: "Descărcați Videoclipuri de pe", sv: "Ladda ner Videor från", sk: "Stiahnite Videá z", ms: "Muat turun Video dari", fa: "دانلود ویدیو از",
+        en: "Save Videos from", es: "Guarda Videos de", fr: "Enregistrez des Vidéos de", de: "Videos speichern von", hi: "वीडियो सेव करें", ar: "احفظ الفيديوهات من", pt: "Salve Vídeos de", ru: "Сохранить Видео из",
+        ja: "動画を保存", ko: "비디오 저장", zh: "保存视频", tr: "Videoları Kaydet", it: "Salva Video da", id: "Simpan Video dari", vi: "Lưu Video từ", th: "บันทึกวิดีโอจาก",
+        nl: "Bewaar Video's van", pl: "Zapisz Filmy z", cs: "Uložte Videa z", ro: "Salvați Videoclipuri de pe", sv: "Spara Videor från", sk: "Uložte Videá z", ms: "Simpan Video dari", fa: "ذخیره ویدیو از",
     },
     "hero.title2": {
-        en: "Social Media", es: "Redes Sociales", fr: "Réseaux Sociaux", de: "Sozialen Medien", hi: "सोशल मीडिया", ar: "وسائل التواصل الاجتماعي", pt: "Redes Sociais", ru: "Соцсетей",
+        en: "Any Platform", es: "Redes Sociales", fr: "Réseaux Sociaux", de: "Sozialen Medien", hi: "सोशल मीडिया", ar: "وسائل التواصل الاجتماعي", pt: "Redes Sociais", ru: "Соцсетей",
         ja: "ソーシャルメディア", ko: "소셜 미디어", zh: "社交媒体", tr: "Sosyal Medya", it: "Social Media", id: "Media Sosial", vi: "Mạng Xã Hội", th: "โซเชียลมีเดีย",
         nl: "Sociale Media", pl: "Mediów Społecznościowych", cs: "Sociálních Médií", ro: "Rețele Sociale", sv: "Sociala Medier", sk: "Sociálnych Médií", ms: "Media Sosial", fa: "شبکه‌های اجتماعی",
     },
