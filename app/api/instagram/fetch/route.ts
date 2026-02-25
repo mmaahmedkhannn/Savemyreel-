@@ -41,72 +41,59 @@ export async function POST(request: NextRequest) {
         let media: MediaItem[] = [];
         let author = "Instagram User";
 
-        // Strategy 1: Use RapidAPI if configured (Best for Production/Vercel/Hostinger)
-        if (process.env.RAPIDAPI_KEY) {
-            console.log("[Server] Fetching via RapidAPI (instagram-scraper-api2)...");
-            try {
-                const rapidUrl = `https://instagram-scraper-api2.p.rapidapi.com/v1/post_info?code_or_id_or_url=${encodeURIComponent(cleanUrl)}&include_insights=true`;
-                const response = await fetch(rapidUrl, {
-                    method: 'GET',
-                    headers: {
-                        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-                        'X-RapidAPI-Host': 'instagram-scraper-api2.p.rapidapi.com'
-                    },
-                    signal: AbortSignal.timeout(15000)
-                });
+        console.log(`[Server] Attempting native extraction for ${cleanUrl}`);
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data?.data) {
-                        const postData = data.data;
-                        author = postData.user?.full_name || postData.user?.username || "Instagram User";
+        // Strategy 1: Attempt native yt-dlp binary extraction
+        try {
+            console.log("[Server] Fetching via native yt-dlp binary...");
+            const { fetchMediaMetadata } = require('@/lib/ytdlp');
+            const metadata = await fetchMediaMetadata(cleanUrl);
 
-                        if (postData.carousel_media && postData.carousel_media.length > 0) {
-                            media = postData.carousel_media.map((item: any, index: number) => {
-                                const isVideo = item.media_type === 2;
-                                const bestVideo = item.video_versions?.[0]?.url;
-                                const bestImage = item.image_versions2?.candidates?.[0]?.url;
+            if (metadata && !metadata.error) {
+                author = metadata.uploader || metadata.channel || metadata.title || "Instagram User";
 
-                                return {
-                                    url: isVideo ? bestVideo : bestImage,
-                                    thumbnail: bestImage,
-                                    type: isVideo ? 'video' : 'image',
-                                    filename: `instagram_${shortcode}_${index + 1}.${isVideo ? 'mp4' : 'jpg'}`,
-                                    width: item.original_width,
-                                    height: item.original_height
-                                };
-                            }).filter((m: any) => m.url);
-                        } else {
-                            const isVideo = postData.media_type === 2;
-                            const bestVideo = postData.video_versions?.[0]?.url;
-                            const bestImage = postData.image_versions2?.candidates?.[0]?.url;
+                // Handle carousel (multiple items) or single item
+                if (metadata.entries && metadata.entries.length > 0) {
+                    media = metadata.entries.map((entry: any, index: number) => {
+                        const isVideo = entry.ext === 'mp4' || (entry.formats && entry.formats.some((f: any) => f.ext === 'mp4'));
+                        const bestUrl = entry.url || (entry.formats && entry.formats[entry.formats.length - 1]?.url);
 
-                            media.push({
-                                url: (isVideo ? bestVideo : bestImage) || "",
-                                thumbnail: bestImage || "",
-                                type: isVideo ? 'video' : 'image',
-                                filename: `instagram_${shortcode}.${isVideo ? 'mp4' : 'jpg'}`,
-                                width: postData.original_width,
-                                height: postData.original_height
-                            });
-                            media = media.filter(m => m.url);
-                        }
-                        console.log("[Server] RapidAPI Strategy succeeded:", media.length, "items");
-                    }
+                        return {
+                            url: bestUrl,
+                            thumbnail: entry.thumbnail || "",
+                            type: isVideo ? 'video' : 'image',
+                            filename: `instagram_${shortcode}_${index + 1}.${isVideo ? 'mp4' : 'jpg'}`,
+                            width: entry.width,
+                            height: entry.height
+                        };
+                    });
                 } else {
-                    console.error("[Server] RapidAPI failed with status:", response.status);
-                    const errorText = await response.text();
-                    console.error("[Server] RapidAPI error response:", errorText);
+                    const bestUrl = metadata.url || (metadata.formats && metadata.formats[metadata.formats.length - 1]?.url);
+                    if (bestUrl) {
+                        const isVideo = metadata.ext === 'mp4' || bestUrl.includes('.mp4');
+                        media.push({
+                            url: bestUrl,
+                            thumbnail: metadata.thumbnail || "",
+                            type: isVideo ? 'video' : 'image',
+                            filename: `instagram_${shortcode}.${isVideo ? 'mp4' : 'jpg'}`,
+                            width: metadata.width,
+                            height: metadata.height
+                        });
+                    }
                 }
-            } catch (e: any) {
-                console.warn("[Server] RapidAPI extraction failed:", e.message);
+
+                if (media.length > 0) {
+                    console.log("[Server] yt-dlp Strategy succeeded:", media.length, "items");
+                }
             }
+        } catch (e: any) {
+            console.warn("[Server] yt-dlp extraction failed:", e.message);
         }
 
-        // Strategy 2: Local Fallback Use instagram-url-direct (Works on local residential IPs)
+        // Strategy 2: Fallback to instagram-url-direct
         if (media.length === 0) {
             try {
-                console.log("[Server] Fetching via instagram-url-direct...");
+                console.log("[Server] Fetching via instagram-url-direct fallback...");
                 const igGet = require('instagram-url-direct');
                 const result = await igGet.instagramGetUrl(cleanUrl);
 
