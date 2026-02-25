@@ -10,6 +10,7 @@
     "sync": "node scripts/auto-sync.js"
   },
   "dependencies": {
+    "@sasmeee/igdl": "^0.0.1-security",
     "axios": "^1.13.2",
     "cheerio": "^1.1.2",
     "clsx": "^2.1.1",
