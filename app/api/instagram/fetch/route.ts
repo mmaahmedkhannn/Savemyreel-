@@ -90,7 +90,45 @@ export async function POST(request: NextRequest) {
             console.warn("[Server] yt-dlp extraction failed:", e.message);
         }
 
-        // Strategy 2: Fallback to instagram-url-direct
+        // Strategy 2: Scrape Instagram Embed Player (Bypasses Datacenter blocks natively)
+        if (media.length === 0) {
+            try {
+                console.log("[Server] Fetching via native embed crawler...");
+                const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
+                const response = await fetch(embedUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5'
+                    },
+                    signal: AbortSignal.timeout(10000)
+                });
+
+                if (response.ok) {
+                    const html = await response.text();
+
+                    const videoMatch = html.match(/video_url(?:\"|\')?\s*:\s*(?:\"|\')(.*?)(?:\"|\')/i);
+                    const imageMatch = html.match(/display_url(?:\"|\')?\s*:\s*(?:\"|\')(.*?)(?:\"|\')/i);
+
+                    if (videoMatch) {
+                        const extractedUrl = videoMatch[1].replace(/\\\\u0026/g, '&').replace(/\\u0026/g, '&');
+                        const thumbUrl = imageMatch ? imageMatch[1].replace(/\\\\u0026/g, '&').replace(/\\u0026/g, '&') : extractedUrl;
+
+                        media.push({
+                            url: extractedUrl,
+                            thumbnail: thumbUrl,
+                            type: 'video',
+                            filename: `instagram_${shortcode}.mp4`
+                        });
+                        console.log("[Server] Embed Strategy succeeded: 1 items");
+                    }
+                }
+            } catch (e: any) {
+                console.warn("[Server] Embed crawler failed:", e.message);
+            }
+        }
+
+        // Strategy 3: Fallback to instagram-url-direct
         if (media.length === 0) {
             try {
                 console.log("[Server] Fetching via instagram-url-direct fallback...");
