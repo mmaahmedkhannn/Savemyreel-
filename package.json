@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently \"next dev\" \"node scripts/auto-sync.js\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync": "node scripts/auto-sync.js"
+    "sync": "node scripts/auto-sync.js",
+    "postinstall": "node scripts/download-bin.js"
   },
   "dependencies": {
     "@sasmeee/igdl": "^0.0.1-security",
@@ -26,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "typescript": "^5"

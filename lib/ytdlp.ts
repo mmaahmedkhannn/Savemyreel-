@@ -5,9 +5,11 @@ import { promisify } from "util";
 const execFileAsync = promisify(execFile);
 
 const fs = require('fs');
+const os = require('os'); // Added os import
 
 // Path to the downloaded standalone binary
-const YTDLP_PATH = path.join(process.cwd(), "bin", "yt-dlp.exe");
+const isWindows = os.platform() === 'win32';
+const YTDLP_PATH = path.join(process.cwd(), "bin", isWindows ? "yt-dlp.exe" : "yt-dlp");
 
 export interface YtDlpOutput {
     id: string;
