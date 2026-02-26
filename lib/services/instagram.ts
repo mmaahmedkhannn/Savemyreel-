@@ -17,19 +17,35 @@ export const instagramService: DownloaderService = {
     async extract(url: string): Promise<MediaItem[]> {
         console.log("[Client] Starting extraction for:", url);
 
-        const response = await fetch('/api/instagram/fetch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: url.split('?')[0] })
-        });
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout before UI hangs
 
-        const data = await response.json();
+            const response = await fetch('/api/instagram/fetch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url.split('?')[0] }),
+                signal: controller.signal
+            });
 
-        if (!data.success) {
-            throw new Error(data.error || "Failed to extract Instagram media");
+            clearTimeout(timeoutId);
+
+            // If the server crashed or timed out (Nginx 502/504), it returns HTML instead of JSON.
+            // We must catch this before `.json()` throws a SyntaxError: Unexpected token '<'
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await response.text();
+                console.error("[Client] Server returned non-JSON response:", text.substring(0, 200));
+                throw new Error("Server took too long to respond or Instagram blocked the extraction. Please try again.");
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || "Failed to extract Instagram media");
+            }
+
+            console.log("[Client] Received", data.media.length, "media items");
+            return data.media;
         }
-
-        console.log("[Client] Received", data.media.length, "media items");
-        return data.media;
-    }
 };
