@@ -195,7 +195,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/favicon.ico" />
@@ -210,7 +210,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={clsx(spaceGrotesk.variable, dmSans.variable, "antialiased")}>
+      <body className={clsx(spaceGrotesk.variable, dmSans.variable, "antialiased")} suppressHydrationWarning>
         <LocaleProvider>
           {children}
         </LocaleProvider>
