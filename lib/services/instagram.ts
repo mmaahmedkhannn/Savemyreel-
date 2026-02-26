@@ -47,5 +47,11 @@ export const instagramService: DownloaderService = {
 
             console.log("[Client] Received", data.media.length, "media items");
             return data.media;
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                throw new Error("Request timed out. Instagram may be temporarily blocking requests from this region.");
+            }
+            throw error;
         }
+    }
 };
