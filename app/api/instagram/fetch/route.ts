@@ -43,6 +43,68 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Server] Attempting native extraction for ${cleanUrl}`);
 
+        // Strategy 0: Use RapidAPI if configured (Best for Production/Vercel/Hostinger)
+        if (process.env.RAPIDAPI_KEY) {
+            console.log("[Server] Fetching via RapidAPI (instagram-scraper-api2)...");
+            try {
+                const rapidUrl = `https://instagram-scraper-api2.p.rapidapi.com/v1/post_info?code_or_id_or_url=${encodeURIComponent(cleanUrl)}&include_insights=true`;
+                const response = await fetch(rapidUrl, {
+                    method: 'GET',
+                    headers: {
+                        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+                        'X-RapidAPI-Host': 'instagram-scraper-api2.p.rapidapi.com'
+                    },
+                    signal: AbortSignal.timeout(15000)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data?.data) {
+                        const postData = data.data;
+                        author = postData.user?.full_name || postData.user?.username || "Instagram User";
+
+                        if (postData.carousel_media && postData.carousel_media.length > 0) {
+                            media = postData.carousel_media.map((item: any, index: number) => {
+                                const isVideo = item.media_type === 2;
+                                const bestVideo = item.video_versions?.[0]?.url;
+                                const bestImage = item.image_versions2?.candidates?.[0]?.url;
+
+                                return {
+                                    url: isVideo ? bestVideo : bestImage,
+                                    thumbnail: bestImage,
+                                    type: isVideo ? 'video' : 'image',
+                                    filename: `instagram_${shortcode}_${index + 1}.${isVideo ? 'mp4' : 'jpg'}`,
+                                    width: item.original_width,
+                                    height: item.original_height
+                                };
+                            }).filter((m: any) => m.url);
+                        } else {
+                            const isVideo = postData.media_type === 2;
+                            const bestVideo = postData.video_versions?.[0]?.url;
+                            const bestImage = postData.image_versions2?.candidates?.[0]?.url;
+
+                            media.push({
+                                url: (isVideo ? bestVideo : bestImage) || "",
+                                thumbnail: bestImage || "",
+                                type: isVideo ? 'video' : 'image',
+                                filename: `instagram_${shortcode}.${isVideo ? 'mp4' : 'jpg'}`,
+                                width: postData.original_width,
+                                height: postData.original_height
+                            });
+                            media = media.filter((m: any) => m.url);
+                        }
+                        console.log("[Server] RapidAPI Strategy succeeded:", media.length, "items");
+                    }
+                } else {
+                    console.error("[Server] RapidAPI failed with status:", response.status);
+                    const errorText = await response.text();
+                    console.error("[Server] RapidAPI error response:", errorText);
+                }
+            } catch (e: any) {
+                console.warn("[Server] RapidAPI extraction failed:", e.message);
+            }
+        }
+
         // Strategy 1: Attempt native yt-dlp binary extraction
         try {
             console.log("[Server] Fetching via native yt-dlp binary...");
