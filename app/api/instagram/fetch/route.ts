@@ -157,6 +157,21 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Strategy 4: Fallback to third-party scraping APIs (works well behind Datacenters)
+        if (media.length === 0) {
+            try {
+                console.log("[Server] Fetching via third-party scraper APIs...");
+                const thirdPartyResult = await thirdPartyExtract(cleanUrl);
+                if (thirdPartyResult && thirdPartyResult.media.length > 0) {
+                    media = thirdPartyResult.media;
+                    author = thirdPartyResult.author;
+                    console.log("[Server] Strategy 4 (third-party APIs) succeeded:", media.length, "items");
+                }
+            } catch (e: any) {
+                console.warn("[Server] Third-party fallback failed:", e.message);
+            }
+        }
+
         if (media.length === 0) {
             return NextResponse.json({
                 success: false,
