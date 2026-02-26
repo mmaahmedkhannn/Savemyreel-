@@ -47,7 +47,8 @@ export async function fetchMediaMetadata(url: string): Promise<YtDlpOutput> {
         args.push(url);
 
         const { stdout } = await execFileAsync(YTDLP_PATH, args, {
-            maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large JSON
+            maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large JSON
+            timeout: 8000 // 8 second hard limit before killing the process
         });
 
         return JSON.parse(stdout);
