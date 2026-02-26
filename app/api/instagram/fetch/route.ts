@@ -133,7 +133,16 @@ export async function POST(request: NextRequest) {
             try {
                 console.log("[Server] Fetching via instagram-url-direct fallback...");
                 const igGet = require('instagram-url-direct');
-                const result = await igGet.instagramGetUrl(cleanUrl);
+
+                // Wrap in a Promise.race to enforce an 8-second timeout on the library
+                const timeoutPromise = new Promise<any>((_, reject) =>
+                    setTimeout(() => reject(new Error("instagram-url-direct timed out")), 8000)
+                );
+
+                const result = await Promise.race([
+                    igGet.instagramGetUrl(cleanUrl),
+                    timeoutPromise
+                ]);
 
                 if (result && result.results_number > 0 && result.url_list && result.url_list.length > 0) {
                     author = result.post_info?.owner_fullname || result.post_info?.owner_username || "Instagram User";
