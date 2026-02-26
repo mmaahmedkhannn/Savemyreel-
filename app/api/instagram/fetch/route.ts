@@ -43,67 +43,7 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Server] Attempting native extraction for ${cleanUrl}`);
 
-        // Strategy 0: Use RapidAPI if configured (Best for Production/Vercel/Hostinger)
-        if (process.env.RAPIDAPI_KEY) {
-            console.log("[Server] Fetching via RapidAPI (instagram-scraper-api2)...");
-            try {
-                const rapidUrl = `https://instagram-scraper-api2.p.rapidapi.com/v1/post_info?code_or_id_or_url=${encodeURIComponent(cleanUrl)}&include_insights=true`;
-                const response = await fetch(rapidUrl, {
-                    method: 'GET',
-                    headers: {
-                        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-                        'X-RapidAPI-Host': 'instagram-scraper-api2.p.rapidapi.com'
-                    },
-                    signal: AbortSignal.timeout(15000)
-                });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data?.data) {
-                        const postData = data.data;
-                        author = postData.user?.full_name || postData.user?.username || "Instagram User";
-
-                        if (postData.carousel_media && postData.carousel_media.length > 0) {
-                            media = postData.carousel_media.map((item: any, index: number) => {
-                                const isVideo = item.media_type === 2;
-                                const bestVideo = item.video_versions?.[0]?.url;
-                                const bestImage = item.image_versions2?.candidates?.[0]?.url;
-
-                                return {
-                                    url: isVideo ? bestVideo : bestImage,
-                                    thumbnail: bestImage,
-                                    type: isVideo ? 'video' : 'image',
-                                    filename: `instagram_${shortcode}_${index + 1}.${isVideo ? 'mp4' : 'jpg'}`,
-                                    width: item.original_width,
-                                    height: item.original_height
-                                };
-                            }).filter((m: any) => m.url);
-                        } else {
-                            const isVideo = postData.media_type === 2;
-                            const bestVideo = postData.video_versions?.[0]?.url;
-                            const bestImage = postData.image_versions2?.candidates?.[0]?.url;
-
-                            media.push({
-                                url: (isVideo ? bestVideo : bestImage) || "",
-                                thumbnail: bestImage || "",
-                                type: isVideo ? 'video' : 'image',
-                                filename: `instagram_${shortcode}.${isVideo ? 'mp4' : 'jpg'}`,
-                                width: postData.original_width,
-                                height: postData.original_height
-                            });
-                            media = media.filter((m: any) => m.url);
-                        }
-                        console.log("[Server] RapidAPI Strategy succeeded:", media.length, "items");
-                    }
-                } else {
-                    console.error("[Server] RapidAPI failed with status:", response.status);
-                    const errorText = await response.text();
-                    console.error("[Server] RapidAPI error response:", errorText);
-                }
-            } catch (e: any) {
-                console.warn("[Server] RapidAPI extraction failed:", e.message);
-            }
-        }
 
         // Strategy 1: Attempt native yt-dlp binary extraction
         try {
@@ -228,20 +168,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Strategy 4: Fallback to third-party scraping APIs (works well behind Datacenters)
-        if (media.length === 0) {
-            try {
-                console.log("[Server] Fetching via third-party scraper APIs...");
-                const thirdPartyResult = await thirdPartyExtract(cleanUrl);
-                if (thirdPartyResult && thirdPartyResult.media.length > 0) {
-                    media = thirdPartyResult.media;
-                    author = thirdPartyResult.author;
-                    console.log("[Server] Strategy 4 (third-party APIs) succeeded:", media.length, "items");
-                }
-            } catch (e: any) {
-                console.warn("[Server] Third-party fallback failed:", e.message);
-            }
-        }
+
 
         if (media.length === 0) {
             return NextResponse.json({
@@ -377,116 +304,7 @@ function extractFromGraphQL(mediaData: any): MediaItem[] {
     return items;
 }
 
-// ==================== STRATEGY 2: Third-party extraction ====================
 
-async function thirdPartyExtract(url: string): Promise<ExtractionResult> {
-    // Use a publicly available extraction approach via oembed + page parsing
-    // This calls multiple free third-party services as backup
-
-    // Attempt 1: Use the Instagram oEmbed endpoint (may still return some data)
-    try {
-        const oembedUrl = `https://api.instagram.com/oembed?url=${encodeURIComponent(url)}`;
-        const response = await fetch(oembedUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            signal: AbortSignal.timeout(8000),
-        });
-        if (response.ok) {
-            const data = await response.json();
-            if (data.thumbnail_url) {
-                return {
-                    media: [{
-                        url: data.thumbnail_url,
-                        thumbnail: data.thumbnail_url,
-                        type: 'image',
-                        filename: `instagram_${Date.now()}.jpg`,
-                        width: data.thumbnail_width,
-                        height: data.thumbnail_height,
-                    }],
-                    author: data.author_name || "Instagram User",
-                };
-            }
-        }
-    } catch { }
-
-    // Attempt 2: Use a free downloader API
-    try {
-        const response = await fetch("https://v3.saveig.app/api/ajaxSearch", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Origin': 'https://saveig.app',
-                'Referer': 'https://saveig.app/',
-            },
-            body: `q=${encodeURIComponent(url)}&t=media&lang=en`,
-            signal: AbortSignal.timeout(10000),
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data.status === "ok" && data.data) {
-                const media = parseSaveIgResponse(data.data);
-                if (media.length > 0) {
-                    return { media, author: "Instagram User" };
-                }
-            }
-        }
-    } catch { }
-
-    // Attempt 3: Use another free API
-    try {
-        const response = await fetch("https://api.fastdl.app/api/convert", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Origin': 'https://fastdl.app',
-                'Referer': 'https://fastdl.app/',
-            },
-            body: JSON.stringify({ url }),
-            signal: AbortSignal.timeout(10000),
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data.url_list && data.url_list.length > 0) {
-                const media: MediaItem[] = data.url_list.map((mediaUrl: string, i: number) => {
-                    const isVideo = mediaUrl.includes('.mp4') || mediaUrl.includes('video');
-                    return {
-                        url: mediaUrl,
-                        thumbnail: data.thumbnail || mediaUrl,
-                        type: isVideo ? 'video' as const : 'image' as const,
-                        filename: `instagram_${Date.now()}_${i + 1}.${isVideo ? 'mp4' : 'jpg'}`,
-                    };
-                });
-                return { media, author: data.meta?.title || "Instagram User" };
-            }
-        }
-    } catch { }
-
-    throw new Error("All extraction strategies failed");
-}
-
-function parseSaveIgResponse(html: string): MediaItem[] {
-    const items: MediaItem[] = [];
-
-    // Extract download URLs from the HTML response
-    const downloadMatches = html.match(/href="([^"]*(?:scontent|cdninstagram|fbcdn)[^"]*)"/g);
-    if (downloadMatches) {
-        downloadMatches.forEach((match, i) => {
-            const url = match.replace('href="', '').replace('"', '').replace(/&amp;/g, '&');
-            const isVideo = url.includes('.mp4') || url.includes('video');
-            items.push({
-                url,
-                thumbnail: url,
-                type: isVideo ? 'video' : 'image',
-                filename: `instagram_${Date.now()}_${i + 1}.${isVideo ? 'mp4' : 'jpg'}`,
-            });
-        });
-    }
-
-    return items;
-}
 
 // ==================== UTILITIES ====================
 
