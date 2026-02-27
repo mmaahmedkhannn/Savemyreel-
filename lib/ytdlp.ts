@@ -38,10 +38,20 @@ export async function fetchMediaMetadata(url: string): Promise<YtDlpOutput> {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
         ];
 
-        // Check for cookies.txt
-        const cookiesPath = path.join(process.cwd(), "cookies.txt");
-        if (fs.existsSync(cookiesPath)) {
-            args.push("--cookies", cookiesPath);
+        let activeCookiesPath: string | null = null;
+        const localCookiesPath = path.join(process.cwd(), "cookies.txt");
+
+        if (process.env.IG_COOKIES_BASE64) {
+            // Write base64 cookies to a temporary OS file to avoid hosting flags for 'cookies.txt'
+            const tmpPath = path.join(os.tmpdir(), "ig_ydlp_cookies.txt");
+            fs.writeFileSync(tmpPath, Buffer.from(process.env.IG_COOKIES_BASE64, 'base64').toString('utf-8'));
+            activeCookiesPath = tmpPath;
+        } else if (fs.existsSync(localCookiesPath)) {
+            activeCookiesPath = localCookiesPath;
+        }
+
+        if (activeCookiesPath) {
+            args.push("--cookies", activeCookiesPath);
         }
 
         args.push(url);
@@ -64,7 +74,7 @@ export async function fetchMediaMetadata(url: string): Promise<YtDlpOutput> {
 
         // Check for common specific errors
         if (stderrText.includes("Sign in to confirm your age") || stderrText.includes("login required")) {
-            throw new Error("This content requires authentication. Please add a cookies.txt file.");
+            throw new Error("This content requires authentication. Please set IG_COOKIES_BASE64 environment variable.");
         }
         if (stderrText.includes("Video unavailable")) {
             throw new Error("The video is unavailable or deleted.");
