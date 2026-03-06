@@ -69,6 +69,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "weekly",
             priority: 0.9,
         },
+        {
+            url: `${BASE_URL}/pinterest-downloader`,
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.9,
+        },
 
         // Blog articles
         {
