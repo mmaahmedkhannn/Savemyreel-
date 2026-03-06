@@ -46,6 +46,9 @@ export const pinterestService: DownloaderService = {
                 if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
                 const html = await response.text();
 
+                console.log(`[Pinterest] Scraped HTML Length: ${html.length}`);
+                console.log(`[Pinterest] Scraped HTML Start: ${html.substring(0, 150)}`);
+
                 // Pinterest allows the Facebook bot to scrape SEO tags like og:image and og:video without blocking.
                 const ogImageMatch = html.match(/<meta property="og:image" content="(https:\/\/[^"]+)"/i);
                 const ogVideoMatch = html.match(/<meta property="og:video:url" content="(https:\/\/[^"]+)"/i) ||
