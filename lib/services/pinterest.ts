@@ -5,12 +5,27 @@ export const pinterestService: DownloaderService = {
     canHandle: (url: string) => url.includes("pinterest.com") || url.includes("pin.it"),
     extract: async (url: string): Promise<DownloadResult> => {
         try {
-            // Normalize Pinterest URLs for yt-dlp (yt-dlp strictly expects /pin/ID format)
             let formattedUrl = url;
-            const match = url.match(/(?:\/pin\/|\/ideas\/[^\/]+\/|\/p\/)(\d+)/);
+
+            // Step 1: Resolve pin.it shortlinks
+            if (url.includes("pin.it")) {
+                try {
+                    const response = await fetch(url.startsWith("http") ? url : `https://${url}`, {
+                        method: "HEAD",
+                        redirect: "follow",
+                    });
+                    formattedUrl = response.url; // The final resolved URL
+                    console.log(`[Pinterest] Resolved pin.it to: ${formattedUrl}`);
+                } catch (e) {
+                    console.error("[Pinterest] Failed to resolve shortlink", e);
+                }
+            }
+
+            // Step 2: Normalize Pinterest URLs for yt-dlp (yt-dlp strictly expects /pin/ID format)
+            const match = formattedUrl.match(/(?:\/pin\/|\/ideas\/[^\/]+\/|\/p\/)(\d+)/);
             if (match && match[1]) {
                 formattedUrl = `https://www.pinterest.com/pin/${match[1]}/`;
-                console.log(`[Pinterest] Normalized URL: ${url} -> ${formattedUrl}`);
+                console.log(`[Pinterest] Normalized URL to: ${formattedUrl}`);
             }
 
             const metadata = await fetchMediaMetadata(formattedUrl) as any;
