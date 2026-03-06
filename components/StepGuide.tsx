@@ -1,6 +1,6 @@
 import styles from "./StepGuide.module.css";
 
-type Platform = "youtube" | "instagram" | "tiktok" | "facebook" | "twitter";
+type Platform = "youtube" | "instagram" | "tiktok" | "facebook" | "twitter" | "pinterest";
 
 interface StepGuideProps {
     platform: Platform;
@@ -12,6 +12,7 @@ const platformColors: Record<Platform, { primary: string; bg: string; accent: st
     tiktok: { primary: "#00f2ea", bg: "rgba(0,242,234,0.08)", accent: "#ff0050" },
     facebook: { primary: "#1877F2", bg: "rgba(24,119,242,0.08)", accent: "#166FE5" },
     twitter: { primary: "#1DA1F2", bg: "rgba(29,161,242,0.08)", accent: "#0d8ecf" },
+    pinterest: { primary: "#E60023", bg: "rgba(230,0,35,0.08)", accent: "#C8102E" },
 };
 
 const platformNames: Record<Platform, string> = {
@@ -20,6 +21,7 @@ const platformNames: Record<Platform, string> = {
     tiktok: "TikTok",
     facebook: "Facebook",
     twitter: "X (Twitter)",
+    pinterest: "Pinterest",
 };
 
 const platformDomains: Record<Platform, string> = {
@@ -28,6 +30,7 @@ const platformDomains: Record<Platform, string> = {
     tiktok: "tiktok.com/@user/video/...",
     facebook: "facebook.com/watch?v=...",
     twitter: "x.com/user/status/...",
+    pinterest: "pinterest.com/pin/...",
 };
 
 /* ── SVG Illustrations for each step ── */
@@ -84,7 +87,7 @@ function PasteUrlIllustration({ platform }: { platform: Platform }) {
             <text x="44" y="30" fontSize="9" fill="#8b5cf6" fontWeight="bold">My</text>
             <text x="56" y="30" fontSize="9" fill="white" fontWeight="bold">Reel</text>
             {/* Platform tabs */}
-            {(["instagram", "facebook", "tiktok", "twitter", "youtube"] as Platform[]).map((p, i) => {
+            {(["instagram", "facebook", "tiktok", "twitter", "youtube", "pinterest"] as Platform[]).map((p, i) => {
                 const isActive = p === platform;
                 const tabW = 36;
                 const x = 16 + i * (tabW + 4);
@@ -203,6 +206,11 @@ function getSteps(platform: Platform) {
             "Click the Share icon on any tweet with a video, then 'Copy link to Tweet'.",
             "Works with videos, GIFs, and media from both X (Twitter) posts and replies.",
             "Videos are saved in the best available quality as MP4 files.",
+        ],
+        pinterest: [
+            "Tap the three dots (...) or Share button on any pin, then select 'Copy link'.",
+            "Works with video pins, image pins, Idea Pins, and GIF pins.",
+            "Videos are saved as MP4 and images in their original HD quality.",
         ],
     };
 

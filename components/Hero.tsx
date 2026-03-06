@@ -10,7 +10,7 @@ import DownloadResult from "./DownloadResult";
 import { instagramService } from "@/lib/services/instagram";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-type Platform = 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'youtube';
+type Platform = 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'youtube' | 'pinterest';
 
 const platforms = [
     { id: 'instagram' as Platform, name: 'Instagram', domain: 'instagram.com' },
@@ -18,6 +18,7 @@ const platforms = [
     { id: 'tiktok' as Platform, name: 'TikTok', domain: 'tiktok.com' },
     { id: 'twitter' as Platform, name: 'X (Twitter)', domain: 'twitter.com' },
     { id: 'youtube' as Platform, name: 'YouTube', domain: 'youtube.com' },
+    { id: 'pinterest' as Platform, name: 'Pinterest', domain: 'pinterest.com' },
 ];
 
 export default function Hero() {
@@ -35,7 +36,8 @@ export default function Hero() {
         return url.toLowerCase().includes(platformData.domain) ||
             (platform === 'facebook' && url.includes('fb.watch')) ||
             (platform === 'twitter' && url.includes('x.com')) ||
-            (platform === 'youtube' && (url.includes('youtu.be') || url.includes('m.youtube.com')));
+            (platform === 'youtube' && (url.includes('youtu.be') || url.includes('m.youtube.com'))) ||
+            (platform === 'pinterest' && (url.includes('pin.it') || url.includes('pinterest.com')));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -178,7 +180,7 @@ export default function Hero() {
 
                     {!result && (
                         <div className={styles.platforms}>
-                            {["Instagram", "Facebook", "TikTok", "YouTube", "Twitter"].map((p) => (
+                            {["Instagram", "Facebook", "TikTok", "YouTube", "Twitter", "Pinterest"].map((p) => (
                                 <span key={p} className={styles.platformBadge}>{p}</span>
                             ))}
                         </div>
