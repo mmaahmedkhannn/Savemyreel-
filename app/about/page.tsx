@@ -19,8 +19,8 @@ export default function About() {
                             SaveMyReel was created with a simple mission: to provide everyone with a free, fast,
                             and secure way to download their favorite content from social media platforms. We believe
                             that people should be able to access and save publicly shared content for personal use,
-                            whether it&apos;s a memorable Instagram reel, a viral TikTok video, an inspiring Facebook
-                            clip, or educational material shared on X (Twitter).
+                            whether it&apos;s a creative Pinterest pin, a memorable Instagram reel, a viral TikTok video,
+                            an inspiring Facebook clip, or educational material shared on YouTube.
                         </p>
                     </section>
 
@@ -28,7 +28,9 @@ export default function About() {
                         <h2>What We Offer</h2>
                         <p>SaveMyReel is a free online video downloader that supports multiple social media platforms:</p>
                         <ul>
+                            <li><strong>Pinterest Downloader:</strong> Download video pins, image pins, Idea Pins, and GIFs in full HD quality</li>
                             <li><strong>Instagram Downloader:</strong> Download Reels, posts, carousel images, stories, and IGTV videos in HD</li>
+                            <li><strong>YouTube Downloader:</strong> Save YouTube videos, Shorts, and playlists as MP4 or extract audio to MP3</li>
                             <li><strong>Facebook Video Downloader:</strong> Save videos and Reels from public pages and profiles</li>
                             <li><strong>TikTok Downloader:</strong> Download TikTok videos without watermark in HD quality</li>
                             <li><strong>X (Twitter) Video Downloader:</strong> Save videos and GIFs from tweets instantly</li>
@@ -72,7 +74,7 @@ export default function About() {
                     <section className={styles.section}>
                         <h2>How to Download Videos with SaveMyReel</h2>
                         <ol>
-                            <li><strong>Copy:</strong> Find the video or reel you want to download and copy its URL from Instagram, TikTok, Facebook, or X</li>
+                            <li><strong>Copy:</strong> Find the video, image, or pin you want to download and copy its URL from Pinterest, Instagram, YouTube, TikTok, Facebook, or X</li>
                             <li><strong>Paste:</strong> Paste the URL into SaveMyReel&apos;s input field on the homepage</li>
                             <li><strong>Download:</strong> Click the download button and save the media to your device in HD quality</li>
                         </ol>

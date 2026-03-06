@@ -9,15 +9,15 @@ const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 
 const SITE_URL = "https://savemyreel.online";
 const SITE_NAME = "SaveMyReel";
-const SITE_DESCRIPTION = "Free online video downloader for Instagram, TikTok, Facebook & Twitter (X). Download reels, videos, and photos in HD quality — no watermark, no login, no app required. Save to any device instantly.";
+const SITE_DESCRIPTION = "Free online video downloader for Instagram, Pinterest, TikTok, Facebook, YouTube & Twitter (X). Download reels, videos, pins, and photos in HD quality — no watermark, no login, no app required. Save to any device instantly.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "SaveMyReel – Free Video Downloader for Instagram, TikTok & YouTube",
+    default: "SaveMyReel – Free Video Downloader for Instagram, Pinterest, TikTok & YouTube",
     template: "%s | SaveMyReel",
   },
-  description: "Free online video downloader for TikTok, Instagram, YouTube, and Facebook. Download HD videos, reels, and photos without watermark. No app required.",
+  description: "Free online video & image downloader for Pinterest, Instagram, TikTok, YouTube, and Facebook. Download HD videos, reels, pins, and photos without watermark. No app required.",
   keywords: [
     // Core high-volume keywords
     "video downloader", "free video downloader", "online video downloader", "best free video downloader online",
@@ -53,12 +53,23 @@ export const metadata: Metadata = {
     "twitter video to mp4", "twitter video saver", "save tweets video",
     "download twitter gif", "free twitter video downloader",
     "x.com video downloader", "download tweet video",
+    // Pinterest — 2M+ monthly searches
+    "pinterest downloader", "pinterest video downloader", "pinterest image downloader",
+    "download pinterest videos", "save pinterest images", "pinterest pin downloader",
+    "pinterest video download", "download pinterest pins", "pinterest saver",
+    "pinterest gif downloader", "download pinterest idea pins", "free pinterest downloader",
+    "pinterest downloader online", "save pins from pinterest", "pinterest video to mp4",
+    // YouTube — massive volume
+    "youtube downloader", "youtube video downloader", "download youtube videos",
+    "youtube to mp4", "youtube downloader free", "save youtube videos",
+    "youtube to mp3", "youtube video download", "youtube shorts download",
     // Long-tail / Intent-based
     "download social media videos free", "save reels to phone",
     "download videos from social media", "free reel downloader",
     "how to save tiktok without watermark", "best free video downloader online",
     "download videos without app", "save video from link",
     "online video saver", "paste link download video",
+    "download pinterest videos free", "pinterest image download HD",
   ],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -66,8 +77,8 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   category: "Technology",
   openGraph: {
-    title: "SaveMyReel – Free Video Downloader | TikTok, Instagram, YouTube",
-    description: "Download TikTok videos without watermark, save Instagram Reels, and download YouTube to MP4 in HD for free.",
+    title: "SaveMyReel – Free Video Downloader | Pinterest, Instagram, TikTok, YouTube",
+    description: "Download Pinterest pins, TikTok videos without watermark, save Instagram Reels, and download YouTube to MP4 in HD for free.",
     type: "website",
     locale: "en_US",
     siteName: SITE_NAME,
@@ -83,8 +94,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SaveMyReel – Download Videos from Social Media Instantly",
-    description: "Free online video downloader for Instagram Reels, TikTok, Facebook & X. No watermark, HD quality.",
+    title: "SaveMyReel – Download Videos & Images from Social Media Instantly",
+    description: "Free online video downloader for Pinterest, Instagram Reels, TikTok, Facebook & X. No watermark, HD quality.",
     creator: "@savemyreel",
     images: [`${SITE_URL}/og-image.png`],
   },
@@ -156,6 +167,7 @@ const jsonLd = {
         "priceCurrency": "USD",
       },
       "featureList": [
+        "Pinterest Video & Image Download",
         "Instagram Video & Reel Download",
         "TikTok Video Download Without Watermark",
         "YouTube HD Video Downloader",
