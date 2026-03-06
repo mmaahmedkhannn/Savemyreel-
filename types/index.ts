@@ -12,7 +12,7 @@ export interface DownloadResult {
     thumbnail?: string;
     title?: string;
     filename?: string;
-    platform: 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'youtube' | 'unknown';
+    platform: 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'youtube' | 'pinterest' | 'unknown';
     type: 'video' | 'image';
     metadata?: Record<string, any>;
     carouselItems?: MediaItem[];
