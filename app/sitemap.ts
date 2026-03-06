@@ -173,6 +173,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "monthly",
             priority: 0.7,
         },
+        {
+            url: `${BASE_URL}/blog/download-pinterest-images-hd`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/best-pinterest-downloaders`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/download-pinterest-idea-pins`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/pinterest-downloader-iphone-android`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
 
         // Legal pages
         {

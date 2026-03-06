@@ -6,7 +6,7 @@ import styles from "../page-styles.module.css";
 
 export const metadata: Metadata = {
     title: "Blog – Video Download Guides & Tips",
-    description: "Learn how to download videos from Instagram, TikTok, Facebook, and Twitter. Step-by-step guides, tips, and tricks for saving social media content for free.",
+    description: "Learn how to download videos and images from Pinterest, Instagram, YouTube, TikTok, Facebook, and Twitter. Step-by-step guides, tips, and tricks for saving social media content for free.",
     alternates: { canonical: "https://savemyreel.online/blog" },
 };
 
@@ -113,6 +113,34 @@ const articles = [
         title: "How to Download Pinterest Videos for Free",
         description: "Save Pinterest video pins, Idea Pins, and GIFs to your phone or computer. Free, no app required.",
         href: "/blog/download-pinterest-videos",
+        category: "Pinterest",
+        color: "#E60023",
+    },
+    {
+        title: "How to Download Pinterest Images in HD Quality",
+        description: "Save Pinterest images and photos in full HD resolution. Download pins in original quality for free. No app needed.",
+        href: "/blog/download-pinterest-images-hd",
+        category: "Pinterest",
+        color: "#E60023",
+    },
+    {
+        title: "5 Best Free Pinterest Downloaders Online (2026)",
+        description: "We tested dozens of Pinterest downloaders — here are the 5 safest and fastest tools that actually work.",
+        href: "/blog/best-pinterest-downloaders",
+        category: "Pinterest",
+        color: "#E60023",
+    },
+    {
+        title: "How to Download Pinterest Idea Pins & Stories",
+        description: "Download Pinterest Idea Pins (multi-page stories) with videos and images for free in HD quality.",
+        href: "/blog/download-pinterest-idea-pins",
+        category: "Pinterest",
+        color: "#E60023",
+    },
+    {
+        title: "Pinterest Downloader for iPhone & Android — Save Pins to Phone",
+        description: "Download Pinterest videos and images to your phone for free. Step-by-step guide for iPhone & Android.",
+        href: "/blog/pinterest-downloader-iphone-android",
         category: "Pinterest",
         color: "#E60023",
     },
