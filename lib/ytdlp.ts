@@ -70,4 +70,3 @@ export const fetchMediaMetadata = async (url: string) => {
         throw new Error(`Failed to extract media: ${stderrText || error.message}`);
     }
 };
-```
