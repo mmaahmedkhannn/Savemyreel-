@@ -8,8 +8,8 @@ const SITE_URL = "https://savemyreel.online";
 const faqData = [
     {
         category: "Getting Started",
-        question: "How do I download a video from Instagram, TikTok, Facebook, or X?",
-        answer: "Simply copy the URL of the post, reel, or video you want to download, paste it into the SaveMyReel input field on our homepage, and click the Download button. Your video will be processed and download options will appear instantly."
+        question: "How do I download a video or image from Pinterest, Instagram, TikTok, Facebook, or X?",
+        answer: "Simply copy the URL of the pin, post, reel, or video you want to download, paste it into the SaveMyReel input field on our homepage, and click the Download button. Your content will be processed and download options will appear instantly."
     },
     {
         category: "Getting Started",
@@ -24,7 +24,7 @@ const faqData = [
     {
         category: "Features",
         question: "What platforms does SaveMyReel support?",
-        answer: "We support Instagram (posts, reels, carousel images, stories, IGTV), Facebook (videos, reels), TikTok (videos without watermark), and X/Twitter (videos, GIFs). We are constantly working to add more platforms."
+        answer: "We support Pinterest (video pins, image pins, Idea Pins, GIFs), Instagram (posts, reels, carousel images, stories, IGTV), YouTube (videos, Shorts, playlists, MP3 audio), Facebook (videos, reels), TikTok (videos without watermark), and X/Twitter (videos, GIFs)."
     },
     {
         category: "Features",
@@ -99,13 +99,13 @@ const faqJsonLd = {
 
 export const metadata: Metadata = {
     title: "FAQ – Frequently Asked Questions About SaveMyReel Video Downloader",
-    description: "Find answers to common questions about SaveMyReel. Learn how to download Instagram Reels, TikTok videos, Facebook clips, and X(Twitter) media for free in HD quality.",
+    description: "Find answers to common questions about SaveMyReel. Learn how to download Pinterest pins, Instagram Reels, YouTube videos, TikTok clips, and more for free in HD quality.",
     alternates: {
         canonical: `${SITE_URL}/faq`,
     },
     openGraph: {
-        title: "FAQ – SaveMyReel Video Downloader Help & Support",
-        description: "Get answers about downloading videos from Instagram, TikTok, Facebook and X. Troubleshooting, features, and safety information.",
+        title: "FAQ – SaveMyReel Video & Image Downloader Help & Support",
+        description: "Get answers about downloading content from Pinterest, Instagram, YouTube, TikTok, Facebook and X. Troubleshooting, features, and safety information.",
     },
 };
 
