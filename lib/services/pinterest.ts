@@ -32,16 +32,12 @@ export const pinterestService: DownloaderService = {
             try {
                 metadata = await fetchMediaMetadata(formattedUrl) as any;
             } catch (err: any) {
-                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting Mobile HTML scraper fallback...`);
+                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting SEO Meta Tags fallback...`);
 
                 const fetch = require('cross-fetch');
                 const response = await fetch(url, {
                     headers: {
-                        "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Mobile Safari/537.36",
-                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                        "Accept-Language": "en-US,en;q=0.5",
-                        "Cache-Control": "no-cache",
-                        "Pragma": "no-cache",
+                        "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
                     },
                     redirect: 'follow'
                 });
@@ -49,20 +45,29 @@ export const pinterestService: DownloaderService = {
                 if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
                 const html = await response.text();
 
-                // Extract all high-res original images from the mobile HTML response
-                const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
+                // Pinterest allows the Facebook bot to scrape SEO tags like og:image and og:video without blocking.
+                const ogImageMatch = html.match(/<meta property="og:image" content="(https:\/\/[^"]+)"/i);
+                const ogVideoMatch = html.match(/<meta property="og:video:url" content="(https:\/\/[^"]+)"/i) ||
+                    html.match(/<meta property="og:video" content="(https:\/\/[^"]+)"/i);
 
-                if (!origUrlsMatch || origUrlsMatch.length === 0) {
-                    throw new Error("No media found on this Pinterest page.");
+                if (ogVideoMatch && ogVideoMatch[1]) {
+                    // Extract video
+                    return {
+                        url: ogVideoMatch[1],
+                        thumbnail: ogImageMatch ? ogImageMatch[1] : ogVideoMatch[1],
+                        title: "Pinterest Video",
+                        platform: "pinterest",
+                        type: "video",
+                        filename: `pinterest_${Date.now()}.mp4`
+                    };
                 }
 
-                // Deduplicate URLs
-                const uniqueUrls = Array.from(new Set(origUrlsMatch));
-
-                if (uniqueUrls.length === 1) {
+                if (ogImageMatch && ogImageMatch[1]) {
+                    // Extract image
                     return {
-                        url: uniqueUrls[0],
-                        thumbnail: uniqueUrls[0],
+                        url: ogImageMatch[1],
+                        thumbnail: ogImageMatch[1],
+                        title: "Pinterest Image",
                         platform: "pinterest",
                         type: "image",
                         filename: `pinterest_${Date.now()}.jpg`
