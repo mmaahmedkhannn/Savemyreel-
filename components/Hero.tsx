@@ -14,11 +14,11 @@ type Platform = 'instagram' | 'facebook' | 'tiktok' | 'twitter' | 'youtube' | 'p
 
 const platforms = [
     { id: 'instagram' as Platform, name: 'Instagram', domain: 'instagram.com' },
+    { id: 'pinterest' as Platform, name: 'Pinterest', domain: 'pinterest.com' },
+    { id: 'youtube' as Platform, name: 'YouTube', domain: 'youtube.com' },
     { id: 'facebook' as Platform, name: 'Facebook', domain: 'facebook.com' },
     { id: 'tiktok' as Platform, name: 'TikTok', domain: 'tiktok.com' },
     { id: 'twitter' as Platform, name: 'X (Twitter)', domain: 'twitter.com' },
-    { id: 'youtube' as Platform, name: 'YouTube', domain: 'youtube.com' },
-    { id: 'pinterest' as Platform, name: 'Pinterest', domain: 'pinterest.com' },
 ];
 
 export default function Hero() {
@@ -180,7 +180,7 @@ export default function Hero() {
 
                     {!result && (
                         <div className={styles.platforms}>
-                            {["Instagram", "Facebook", "TikTok", "YouTube", "Twitter", "Pinterest"].map((p) => (
+                            {["Instagram", "Pinterest", "YouTube", "Facebook", "TikTok", "Twitter"].map((p) => (
                                 <span key={p} className={styles.platformBadge}>{p}</span>
                             ))}
                         </div>

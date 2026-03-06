@@ -30,11 +30,11 @@ const PlatformIcons: Record<Platform, ReactNode> = {
 
 const platforms: { id: Platform; name: string; color: string }[] = [
     { id: "instagram", name: "Instagram", color: "#E1306C" },
+    { id: "pinterest", name: "Pinterest", color: "#E60023" },
     { id: "youtube", name: "YouTube", color: "#FF0000" },
     { id: "tiktok", name: "TikTok", color: "#00f2ea" },
     { id: "facebook", name: "Facebook", color: "#1877F2" },
     { id: "twitter", name: "X (Twitter)", color: "#1DA1F2" },
-    { id: "pinterest", name: "Pinterest", color: "#E60023" },
 ];
 
 const platformDomains: Record<Platform, string> = {
