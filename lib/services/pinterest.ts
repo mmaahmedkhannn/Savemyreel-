@@ -58,8 +58,8 @@ export const pinterestService: DownloaderService = {
                 filename: `pinterest_${metadata.id || Date.now()}.${isVideo ? 'mp4' : 'jpg'}`
             };
         } catch (e: any) {
-            console.error("Pinterest Download Error:", e.message);
-            throw new Error("Failed to download Pinterest media.");
+            console.error("[Pinterest Extraction Error]:", e);
+            throw new Error(`Failed to download Pinterest media: ${e.message || 'Unknown error'}`);
         }
     }
 };
