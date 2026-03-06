@@ -32,50 +32,21 @@ export const pinterestService: DownloaderService = {
             try {
                 metadata = await fetchMediaMetadata(formattedUrl) as any;
             } catch (err: any) {
-                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting SEO Meta Tags fallback...`);
+                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting Node Subprocess Fallback...`);
 
-                const https = require('https');
-                const zlib = require('zlib');
-                const fetchHtml = (targetUrl: string): Promise<string> => {
-                    return new Promise((resolve, reject) => {
-                        const req = https.get(targetUrl, {
-                            headers: {
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
-                                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                                "Accept-Language": "en-US,en;q=0.5",
-                                "Accept-Encoding": "gzip, deflate, br",
-                                "Connection": "Keep-Alive",
-                                "Upgrade-Insecure-Requests": "1"
-                            }
-                        }, (res: any) => {
-                            if (res.statusCode >= 300 && res.statusCode <= 308 && res.headers.location) {
-                                resolve(fetchHtml(res.headers.location.startsWith('http') ? res.headers.location : `https://www.pinterest.com${res.headers.location}`));
-                                return;
-                            }
+                const execPromise = require('util').promisify(require('child_process').exec);
 
-                            let stream = res;
-                            if (res.headers['content-encoding'] === 'gzip') {
-                                stream = res.pipe(zlib.createGunzip());
-                            } else if (res.headers['content-encoding'] === 'br') {
-                                stream = res.pipe(zlib.createBrotliDecompress());
-                            } else if (res.headers['content-encoding'] === 'deflate') {
-                                stream = res.pipe(zlib.createInflate());
-                            }
+                // We use a completely detached Node subprocess to fetch because Next.js heavily modifies 
+                // native fetch/https and gets flagged instantly by Pinterest/Cloudflare.
+                const scriptCmd = `node -e "const https = require('https'); https.get('${url}', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0', 'Accept': 'text/html' } }, res => { let data = ''; res.on('data', c => data += c); res.on('end', () => console.log(data)); }).on('error', err => console.error(err));"`;
 
-                            let data = '';
-                            stream.on('data', (c: any) => data += c.toString('utf8'));
-                            stream.on('end', () => resolve(data));
-                            stream.on('error', reject);
-                        });
-                        req.on('error', reject);
-                        req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
-                    });
-                };
+                const { stdout, stderr } = await execPromise(scriptCmd, { maxBuffer: 10 * 1024 * 1024 }); // 10MB buffer for HTML
 
-                const html = await fetchHtml(url);
+                if (stderr && stderr.includes('Error')) {
+                    console.error("[Pinterest Node Subprocess Stderr]:", stderr);
+                }
 
-                console.log(`[Pinterest] Scraped HTML Length: ${html.length}`);
-                console.log(`[Pinterest] Scraped HTML Start: ${html.substring(0, 150)}`);
+                const html = stdout;
 
                 // Pinterest allows the Facebook bot to scrape SEO tags like og:image and og:video without blocking.
                 const ogImageMatch = html.match(/<meta property="og:image" content="(https:\/\/[^"]+)"/i);
