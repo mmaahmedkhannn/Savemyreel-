@@ -1,4 +1,5 @@
 const https = require('https');
+const fs = require('fs');
 
 async function scrapePinterest(url) {
     const options = {
@@ -20,34 +21,12 @@ async function scrapePinterest(url) {
         res.on('end', () => {
             console.log(`Fetched ${data.length} bytes`);
 
-            // Look for the initial Redux state or Relay state
             const stateMatch = data.match(/<script id="__PWS_DATA__" type="application\/json">([^<]+)<\/script>/);
             if (stateMatch) {
-                try {
-                    const pwsData = JSON.parse(stateMatch[1]);
-                    console.log("Found __PWS_DATA__");
-
-                    // Simple search for Video URLs in the json text just to see if it's there
-                    const strData = stateMatch[1];
-                    const vids = strData.match(/"url":"(https:\/\/[^"]+\.mp4)"/g);
-                    const imgs = strData.match(/"url":"(https:\/\/[^"]+\.jpg)"/g);
-
-                    console.log("Found videos:", vids ? vids.length : 0);
-                    if (vids) console.log(vids[0]);
-
-                } catch (e) { console.error(e); }
-            } else {
-
-                const relayMatch = data.match(/<script id="__INITIAL_DATA__" type="application\/json">([^<]+)<\/script>/);
-                if (relayMatch) {
-                    console.log("Found __INITIAL_DATA__");
-                } else {
-                    console.log("No data script found");
-                }
+                fs.writeFileSync("pinterest-state.json", stateMatch[1]);
+                console.log("Dumped state to pinterest-state.json");
             }
         });
-    }).on("error", (err) => {
-        console.log("Error: " + err.message);
     });
 }
 
