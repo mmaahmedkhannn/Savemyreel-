@@ -20,12 +20,8 @@ async function scrapePinterest(url) {
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
             console.log(`Fetched ${data.length} bytes`);
-
-            const stateMatch = data.match(/<script id="__PWS_DATA__" type="application\/json">([^<]+)<\/script>/);
-            if (stateMatch) {
-                fs.writeFileSync("pinterest-state.json", stateMatch[1]);
-                console.log("Dumped state to pinterest-state.json");
-            }
+            fs.writeFileSync("test.html", data);
+            console.log("Dumped HTML to test.html");
         });
     });
 }
