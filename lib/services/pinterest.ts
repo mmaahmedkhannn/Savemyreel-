@@ -44,14 +44,21 @@ export const pinterestService: DownloaderService = {
                 } catch (e) {
                     console.error("Sparticuz Chromium missing, falling back to local chrome path if exists", e);
                 }
+                const isLocal = process.env.NODE_ENV === 'development' || process.platform === 'win32';
 
                 let browser;
                 let html = "";
                 try {
-                    const executablePath = chromium ? await chromium.executablePath() : 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+                    const executablePath = isLocal
+                        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+                        : await chromium.executablePath();
+
+                    const args = isLocal
+                        ? ['--no-sandbox', '--disable-setuid-sandbox']
+                        : chromium.args;
 
                     browser = await puppeteer.launch({
-                        args: chromium ? chromium.args : ['--no-sandbox', '--disable-setuid-sandbox'],
+                        args: args,
                         defaultViewport: chromium ? chromium.defaultViewport : { width: 1280, height: 720 },
                         executablePath: executablePath,
                         headless: chromium ? chromium.headless : true,
