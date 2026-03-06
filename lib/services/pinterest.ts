@@ -28,7 +28,64 @@ export const pinterestService: DownloaderService = {
                 console.log(`[Pinterest] Normalized URL to: ${formattedUrl}`);
             }
 
-            const metadata = await fetchMediaMetadata(formattedUrl) as any;
+            let metadata;
+            try {
+                metadata = await fetchMediaMetadata(formattedUrl) as any;
+            } catch (err: any) {
+                // FALLBACK: yt-dlp fails on Image-Only Idea Pins (Carousels) with 404 or extraction errors.
+                // We natively scrape the HTML for the high-res "originals" image URLs.
+                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting native HTML scraper fallback...`);
+
+                const response = await fetch(formattedUrl, {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Accept": "text/html,application/xhtml+xml",
+                        "Accept-Language": "en-US,en;q=0.5"
+                    }
+                });
+
+                if (!response.ok) throw new Error("Failed to reach Pinterest servers.");
+                const html = await response.text();
+
+                // Extract all high-res original images from the React/Redux JSON blob embedded in the HTML
+                const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
+
+                if (!origUrlsMatch || origUrlsMatch.length === 0) {
+                    throw new Error("No media found on this Pinterest page.");
+                }
+
+                // Deduplicate URLs
+                const uniqueUrls = Array.from(new Set(origUrlsMatch));
+
+                if (uniqueUrls.length === 1) {
+                    return {
+                        url: uniqueUrls[0],
+                        thumbnail: uniqueUrls[0],
+                        title: "Pinterest Image",
+                        platform: "pinterest",
+                        type: "image",
+                        filename: `pinterest_${Date.now()}.jpg`
+                    };
+                } else {
+                    // It's a carousel (Idea Pin)
+                    const carouselItems = uniqueUrls.map((imgUrl, i) => ({
+                        url: imgUrl,
+                        thumbnail: imgUrl,
+                        type: "image" as const,
+                        filename: `pinterest_${Date.now()}_${i + 1}.jpg`
+                    }));
+
+                    return {
+                        url: uniqueUrls[0],
+                        thumbnail: uniqueUrls[0],
+                        title: "Pinterest Idea Pin (Carousel)",
+                        platform: "pinterest",
+                        type: "image",
+                        carouselItems: carouselItems,
+                        filename: `pinterest_${Date.now()}_1.jpg`
+                    };
+                }
+            }
 
             // Handle potential image-only pins or video pins
             const isVideo = metadata.formats && metadata.formats.length > 0 && metadata.formats.some((f: any) => f.vcodec !== "none");
