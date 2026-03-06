@@ -36,103 +36,91 @@ export const pinterestService: DownloaderService = {
                 // We natively scrape the HTML for the high-res "originals" image URLs.
                 console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting native HTML scraper fallback...`);
 
-                // Bypassing Next.js global fetch using native https to prevent payload stripping
-                const https = require('https');
+                // We use cross-fetch to ensure we get a fresh, un-cached, auto-decompressed response
+                const fetch = require('cross-fetch');
+                const response = await fetch(url, {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                        "Cache-Control": "no-cache",
+                        "Pragma": "no-cache",
+                    },
+                    redirect: 'follow'
+                });
 
-                const fetchHtml = (targetUrl: string): Promise<string> => {
-                    return new Promise((resolve, reject) => {
-                        const req = https.get(targetUrl, {
-                            headers: {
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                                "Accept": "text/html,application/xhtml+xml",
-                                "Accept-Language": "en-US,en;q=0.5"
-                            }
-                        }, (res: any) => {
-                            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                                console.log(`[Pinterest] Redirecting to: ${res.headers.location}`);
-                                resolve(fetchHtml(res.headers.location));
-                                return;
-                            }
-                            let data = '';
-                            res.on('data', (c: any) => data += c);
-                            res.on('end', () => resolve(data));
-                        });
-                        req.on('error', reject);
-                    });
-                };
-
-                const html = await fetchHtml(url);
+                if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
+                const html = await response.text();
 
                 // Extract all high-res original images from the embedded React/Redux JSON blob
                 const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
 
                 if (!origUrlsMatch || origUrlsMatch.length === 0) {
                     throw new Error("No media found on this Pinterest page.");
+
+                    // Deduplicate URLs
+                    const uniqueUrls = Array.from(new Set(origUrlsMatch));
+
+                    if (uniqueUrls.length === 1) {
+                        return {
+                            url: uniqueUrls[0],
+                            thumbnail: uniqueUrls[0],
+                            title: "Pinterest Image",
+                            platform: "pinterest",
+                            type: "image",
+                            filename: `pinterest_${Date.now()}.jpg`
+                        };
+                    } else {
+                        // It's a carousel (Idea Pin)
+                        const carouselItems = uniqueUrls.map((imgUrl, i) => ({
+                            url: imgUrl,
+                            thumbnail: imgUrl,
+                            type: "image" as const,
+                            filename: `pinterest_${Date.now()}_${i + 1}.jpg`
+                        }));
+
+                        return {
+                            url: uniqueUrls[0],
+                            thumbnail: uniqueUrls[0],
+                            title: "Pinterest Idea Pin (Carousel)",
+                            platform: "pinterest",
+                            type: "image",
+                            carouselItems: carouselItems,
+                            filename: `pinterest_${Date.now()}_1.jpg`
+                        };
+                    }
                 }
 
-                // Deduplicate URLs
-                const uniqueUrls = Array.from(new Set(origUrlsMatch));
+                // Handle potential image-only pins or video pins
+                const isVideo = metadata.formats && metadata.formats.length > 0 && metadata.formats.some((f: any) => f.vcodec !== "none");
 
-                if (uniqueUrls.length === 1) {
+                const mediaUrl = metadata.url || (metadata.formats && metadata.formats.length > 0 ? metadata.formats[metadata.formats.length - 1].url : null);
+
+                if (!mediaUrl && metadata.thumbnail) {
+                    // If it's just an image pin, yt-dlp might fail to find a "video" but could return thumbnail
                     return {
-                        url: uniqueUrls[0],
-                        thumbnail: uniqueUrls[0],
-                        title: "Pinterest Image",
+                        url: metadata.thumbnail,
+                        thumbnail: metadata.thumbnail,
+                        title: metadata.title || "Pinterest Image",
                         platform: "pinterest",
                         type: "image",
-                        filename: `pinterest_${Date.now()}.jpg`
-                    };
-                } else {
-                    // It's a carousel (Idea Pin)
-                    const carouselItems = uniqueUrls.map((imgUrl, i) => ({
-                        url: imgUrl,
-                        thumbnail: imgUrl,
-                        type: "image" as const,
-                        filename: `pinterest_${Date.now()}_${i + 1}.jpg`
-                    }));
-
-                    return {
-                        url: uniqueUrls[0],
-                        thumbnail: uniqueUrls[0],
-                        title: "Pinterest Idea Pin (Carousel)",
-                        platform: "pinterest",
-                        type: "image",
-                        carouselItems: carouselItems,
-                        filename: `pinterest_${Date.now()}_1.jpg`
+                        filename: `pinterest_${metadata.id || Date.now()}.jpg`
                     };
                 }
-            }
 
-            // Handle potential image-only pins or video pins
-            const isVideo = metadata.formats && metadata.formats.length > 0 && metadata.formats.some((f: any) => f.vcodec !== "none");
+                if (!mediaUrl) throw new Error("No media found.");
 
-            const mediaUrl = metadata.url || (metadata.formats && metadata.formats.length > 0 ? metadata.formats[metadata.formats.length - 1].url : null);
-
-            if (!mediaUrl && metadata.thumbnail) {
-                // If it's just an image pin, yt-dlp might fail to find a "video" but could return thumbnail
                 return {
-                    url: metadata.thumbnail,
+                    url: mediaUrl,
                     thumbnail: metadata.thumbnail,
-                    title: metadata.title || "Pinterest Image",
+                    title: metadata.title || "Pinterest Media",
                     platform: "pinterest",
-                    type: "image",
-                    filename: `pinterest_${metadata.id || Date.now()}.jpg`
+                    type: isVideo ? "video" : "image",
+                    filename: `pinterest_${metadata.id || Date.now()}.${isVideo ? 'mp4' : 'jpg'}`
                 };
+            } catch (e: any) {
+                console.error("[Pinterest Extraction Error]:", e);
+                throw new Error(`Failed to download Pinterest media: ${e.message || 'Unknown error'}`);
             }
-
-            if (!mediaUrl) throw new Error("No media found.");
-
-            return {
-                url: mediaUrl,
-                thumbnail: metadata.thumbnail,
-                title: metadata.title || "Pinterest Media",
-                platform: "pinterest",
-                type: isVideo ? "video" : "image",
-                filename: `pinterest_${metadata.id || Date.now()}.${isVideo ? 'mp4' : 'jpg'}`
-            };
-        } catch (e: any) {
-            console.error("[Pinterest Extraction Error]:", e);
-            throw new Error(`Failed to download Pinterest media: ${e.message || 'Unknown error'}`);
         }
-    }
 };
