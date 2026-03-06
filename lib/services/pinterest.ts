@@ -36,17 +36,22 @@ export const pinterestService: DownloaderService = {
                 // We natively scrape the HTML for the high-res "originals" image URLs.
                 console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting native HTML scraper fallback...`);
 
-                const response = await fetch(url, {
-                    headers: {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        "Accept": "text/html,application/xhtml+xml",
-                        "Accept-Language": "en-US,en;q=0.5"
-                    },
-                    cache: 'no-store'
+                // Bypassing Next.js global fetch using native https to prevent payload stripping
+                const https = require('https');
+                const html = await new Promise<string>((resolve, reject) => {
+                    const req = https.get(url, {
+                        headers: {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                            "Accept": "text/html,application/xhtml+xml",
+                            "Accept-Language": "en-US,en;q=0.5"
+                        }
+                    }, (res: any) => {
+                        let data = '';
+                        res.on('data', (c: any) => data += c);
+                        res.on('end', () => resolve(data));
+                    });
+                    req.on('error', reject);
                 });
-
-                if (!response.ok) throw new Error("Failed to reach Pinterest servers.");
-                const html = await response.text();
 
                 // Extract all high-res original images from the React/Redux JSON blob embedded in the HTML
                 const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
