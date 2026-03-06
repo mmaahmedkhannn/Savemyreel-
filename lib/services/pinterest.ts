@@ -33,29 +33,41 @@ export const pinterestService: DownloaderService = {
                 metadata = await fetchMediaMetadata(formattedUrl) as any;
             } catch (err: any) {
                 // FALLBACK: yt-dlp fails on Image-Only Idea Pins (Carousels) with 404 or extraction errors.
-                // We natively scrape the HTML for the high-res "originals" image URLs.
-                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting native HTML scraper fallback...`);
+                // Pinterest strictly blocks Next.js/Vercel standard fetches even with headers.
+                // We use puppeteer-core to spin up a headless browser to get the evaluated HTML.
+                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting Puppeteer browser fallback...`);
 
-                // We use cross-fetch to ensure we get a fresh, un-cached, auto-decompressed response
-                const fetch = require('cross-fetch');
-                const response = await fetch(url, {
-                    headers: {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                        "Accept-Language": "en-US,en;q=0.5",
-                        "Cache-Control": "no-cache",
-                        "Pragma": "no-cache",
-                        "Sec-Fetch-Dest": "document",
-                        "Sec-Fetch-Mode": "navigate",
-                        "Sec-Fetch-Site": "none",
-                        "Sec-Fetch-User": "?1",
-                        "Upgrade-Insecure-Requests": "1"
-                    },
-                    redirect: 'follow'
-                });
+                const puppeteer = require('puppeteer-core');
+                let chromium;
+                try {
+                    chromium = require('@sparticuz/chromium');
+                } catch (e) {
+                    console.error("Sparticuz Chromium missing, falling back to local chrome path if exists", e);
+                }
 
-                if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
-                const html = await response.text();
+                let browser;
+                let html = "";
+                try {
+                    const executablePath = chromium ? await chromium.executablePath() : 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+
+                    browser = await puppeteer.launch({
+                        args: chromium ? chromium.args : ['--no-sandbox', '--disable-setuid-sandbox'],
+                        defaultViewport: chromium ? chromium.defaultViewport : { width: 1280, height: 720 },
+                        executablePath: executablePath,
+                        headless: chromium ? chromium.headless : true,
+                    });
+
+                    const page = await browser.newPage();
+                    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+                    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+                    html = await page.content();
+                } catch (browserErr) {
+                    console.error("[Pinterest Puppeteer Error]:", browserErr);
+                    throw new Error("Failed to reach Pinterest via browser fallback.");
+                } finally {
+                    if (browser) await browser.close();
+                }
 
                 // Extract all high-res original images from the embedded React/Redux JSON blob
                 const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
