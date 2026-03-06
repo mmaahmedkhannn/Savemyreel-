@@ -1,24 +1,22 @@
 const fs = require('fs');
-
 const data = JSON.parse(fs.readFileSync('formatted.json'));
-let foundImages = [];
 
-function searchObj(obj) {
+let urls = new Set();
+function findURLs(obj) {
     if (!obj) return;
-    if (typeof obj === 'string') {
-        if (obj.includes('.jpg') && obj.includes('orig')) foundImages.push(obj);
-        return;
-    }
-    if (typeof obj === 'object') {
+    if (typeof obj === 'string' && obj.startsWith('http')) {
+        urls.add(obj);
+    } else if (typeof obj === 'object') {
         for (let key in obj) {
-            if (typeof obj[key] === 'string' && obj[key].includes('.jpg') && obj[key].includes('/orig/')) {
-                foundImages.push(obj[key]);
-            }
-            searchObj(obj[key]);
+            findURLs(obj[key]);
         }
     }
 }
+findURLs(data);
 
-searchObj(data);
+const urlArr = Array.from(urls);
+console.log('Total URLs found:', urlArr.length);
 
-console.log("Images:", Array.from(new Set(foundImages)).slice(0, 5));
+const mediaUrls = urlArr.filter(u => !u.includes('/avatars/') && !u.includes('/tracking/') && (u.includes('.jpg') || u.includes('.mp4') || u.includes('.m3u8') || u.includes('.png') || u.includes('.webp')));
+console.log('Media URLs:');
+mediaUrls.slice(0, 10).forEach(u => console.log(u));
