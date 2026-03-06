@@ -67,8 +67,14 @@ export const pinterestService: DownloaderService = {
                     const page = await browser.newPage();
                     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
-                    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+                    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
                     html = await page.content();
+
+                    if (isLocal) {
+                        require('fs').writeFileSync('pup-test.html', html);
+                        console.log(`[Pinterest] Wrote ${html.length} bytes to pup-test.html`);
+                    }
+
                 } catch (browserErr) {
                     console.error("[Pinterest Puppeteer Error]:", browserErr);
                     throw new Error("Failed to reach Pinterest via browser fallback.");
