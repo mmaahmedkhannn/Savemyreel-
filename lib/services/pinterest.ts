@@ -32,47 +32,60 @@ export const pinterestService: DownloaderService = {
             try {
                 metadata = await fetchMediaMetadata(formattedUrl) as any;
             } catch (err: any) {
-                // FALLBACK: yt-dlp fails on Image-Only Idea Pins (Carousels) with 404 or extraction errors.
-                // Pinterest strictly blocks Next.js/Vercel standard fetches even with headers.
-                // We use puppeteer-core to spin up a headless browser to get the evaluated HTML.
-                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting fetch fallback with cookies...`);
+                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting hidden PinResource API fallback...`);
+
+                // Extract the PIN ID from the URL to query the JSON API
+                const pinIdMatch = url.match(/(?:\/pin\/|\/ideas\/[^\/]+\/|\/p\/)(\d+)/);
+                if (!pinIdMatch || !pinIdMatch[1]) {
+                    throw new Error("Could not extract Pin ID for fallback API.");
+                }
+                const pinId = pinIdMatch[1];
+
+                const apiData = { "options": { "id": pinId, "field_set_key": "detailed" } };
+                const encodedData = encodeURIComponent(JSON.stringify(apiData));
+                const apiUrl = `https://www.pinterest.com/resource/PinResource/get/?source_url=/pin/${pinId}/&data=${encodedData}`;
 
                 const fetch = require('cross-fetch');
-                const response = await fetch(url, {
+                const response = await fetch(apiUrl, {
                     headers: {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                        "Accept-Language": "en-US,en;q=0.5",
-                        "Cache-Control": "no-cache",
-                        "Pragma": "no-cache",
-                        "Sec-Fetch-Dest": "document",
-                        "Sec-Fetch-Mode": "navigate",
-                        "Sec-Fetch-Site": "none",
-                        "Sec-Fetch-User": "?1",
-                        "Upgrade-Insecure-Requests": "1",
-                        "Cookie": "csrftoken=e74f1772e6d673efd258a76f300a86f8; _pinterest_sess=TWc9PSZCZFNOU3JaM2RuaEgxek5TMXpNN2FqT1VuMC9vb2tvTTdzMExycm1wL0pyMlVBRlNBdDFyRVArMHZYWVI0SnRNU3lLeEExdUpjUnJQSys5WUVQMXNRNWJKMmsyOHU4OXZVd0tYd2srYUdPaz0mRS9XZ004aFdhNXMzVnEzZE1oa1YzcGV3UUpNPQ==;"
-                    },
-                    redirect: 'follow'
+                        "Accept": "application/json",
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
                 });
 
-                if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
-                const html = await response.text();
+                if (!response.ok) throw new Error(`Failed to reach Pinterest API (${response.status}).`);
 
-                // Extract all high-res original images from the embedded React/Redux JSON blob
-                const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
+                const jsonResp = await response.json();
+                const pinData = jsonResp?.resource_response?.data;
 
-                if (!origUrlsMatch || origUrlsMatch.length === 0) {
-                    throw new Error("No media found on this Pinterest page.");
+                if (!pinData) {
+                    throw new Error("No media found on this Pinterest page (API).");
+                }
+
+                // Try to extract Story Pin (Idea Pin) Carousel Images
+                let extractImages: string[] = [];
+                if (pinData.story_pin_data && pinData.story_pin_data.pages) {
+                    pinData.story_pin_data.pages.forEach((page: any) => {
+                        const imgUrl = page.blocks?.[0]?.image?.images?.orig?.url;
+                        if (imgUrl) extractImages.push(imgUrl);
+                    });
+                } else if (pinData.images?.orig?.url) {
+                    // Standard Single Image Pin
+                    extractImages.push(pinData.images.orig.url);
+                }
+
+                if (extractImages.length === 0) {
+                    throw new Error("No image media found on this Pinterest page.");
                 }
 
                 // Deduplicate URLs
-                const uniqueUrls = Array.from(new Set(origUrlsMatch));
+                const uniqueUrls = Array.from(new Set(extractImages));
 
                 if (uniqueUrls.length === 1) {
                     return {
                         url: uniqueUrls[0],
                         thumbnail: uniqueUrls[0],
-                        title: "Pinterest Image",
                         platform: "pinterest",
                         type: "image",
                         filename: `pinterest_${Date.now()}.jpg`
