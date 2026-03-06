@@ -36,6 +36,7 @@ export default function Footer() {
                         <Link href="/facebook-downloader">Facebook Downloader</Link>
                         <Link href="/twitter-downloader">Twitter Downloader</Link>
                         <Link href="/youtube-downloader">YouTube Downloader</Link>
+                        <Link href="/pinterest-downloader">Pinterest Downloader</Link>
                     </div>
 
                     <div className={styles.links}>
@@ -58,7 +59,7 @@ export default function Footer() {
                 <div className={styles.copyright}>
                     <p>&copy; {currentYear} SaveMyReel. {t("footer.copyright")}</p>
                     <p className={styles.disclaimer}>
-                        SaveMyReel is not affiliated with Instagram, Facebook, TikTok, YouTube, or X. All trademarks belong to their respective owners.
+                        SaveMyReel is not affiliated with Instagram, Facebook, TikTok, YouTube, Pinterest, or X. All trademarks belong to their respective owners.
                     </p>
                 </div>
             </div>
