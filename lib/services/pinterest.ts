@@ -35,52 +35,28 @@ export const pinterestService: DownloaderService = {
                 // FALLBACK: yt-dlp fails on Image-Only Idea Pins (Carousels) with 404 or extraction errors.
                 // Pinterest strictly blocks Next.js/Vercel standard fetches even with headers.
                 // We use puppeteer-core to spin up a headless browser to get the evaluated HTML.
-                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting Puppeteer browser fallback...`);
+                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting fetch fallback with cookies...`);
 
-                const puppeteer = require('puppeteer-core');
-                let chromium;
-                try {
-                    chromium = require('@sparticuz/chromium');
-                } catch (e) {
-                    console.error("Sparticuz Chromium missing, falling back to local chrome path if exists", e);
-                }
-                const isLocal = process.env.NODE_ENV === 'development' || process.platform === 'win32';
+                const fetch = require('cross-fetch');
+                const response = await fetch(url, {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                        "Cache-Control": "no-cache",
+                        "Pragma": "no-cache",
+                        "Sec-Fetch-Dest": "document",
+                        "Sec-Fetch-Mode": "navigate",
+                        "Sec-Fetch-Site": "none",
+                        "Sec-Fetch-User": "?1",
+                        "Upgrade-Insecure-Requests": "1",
+                        "Cookie": "csrftoken=e74f1772e6d673efd258a76f300a86f8; _pinterest_sess=TWc9PSZCZFNOU3JaM2RuaEgxek5TMXpNN2FqT1VuMC9vb2tvTTdzMExycm1wL0pyMlVBRlNBdDFyRVArMHZYWVI0SnRNU3lLeEExdUpjUnJQSys5WUVQMXNRNWJKMmsyOHU4OXZVd0tYd2srYUdPaz0mRS9XZ004aFdhNXMzVnEzZE1oa1YzcGV3UUpNPQ==;"
+                    },
+                    redirect: 'follow'
+                });
 
-                let browser;
-                let html = "";
-                try {
-                    const executablePath = isLocal
-                        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-                        : await chromium.executablePath();
-
-                    const args = isLocal
-                        ? ['--no-sandbox', '--disable-setuid-sandbox']
-                        : chromium.args;
-
-                    browser = await puppeteer.launch({
-                        args: args,
-                        defaultViewport: chromium ? chromium.defaultViewport : { width: 1280, height: 720 },
-                        executablePath: executablePath,
-                        headless: chromium ? chromium.headless : true,
-                    });
-
-                    const page = await browser.newPage();
-                    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-
-                    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                    html = await page.content();
-
-                    if (isLocal) {
-                        require('fs').writeFileSync('pup-test.html', html);
-                        // console.log(`[Pinterest] Wrote ${html.length} bytes to pup-test.html`);
-                    }
-
-                } catch (browserErr) {
-                    console.error("[Pinterest Puppeteer Error]:", browserErr);
-                    throw new Error("Failed to reach Pinterest via browser fallback.");
-                } finally {
-                    if (browser) await browser.close();
-                }
+                if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
+                const html = await response.text();
 
                 // Extract all high-res original images from the embedded React/Redux JSON blob
                 const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
