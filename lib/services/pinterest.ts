@@ -35,12 +35,14 @@ export const pinterestService: DownloaderService = {
                 console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting SEO Meta Tags fallback...`);
 
                 const https = require('https');
+                const zlib = require('zlib');
                 const fetchHtml = (targetUrl: string): Promise<string> => {
                     return new Promise((resolve, reject) => {
                         const req = https.get(targetUrl, {
                             headers: {
                                 "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
                                 "Accept": "text/html",
+                                "Accept-Encoding": "gzip, deflate, br",
                                 "Connection": "close"
                             }
                         }, (res: any) => {
@@ -48,10 +50,20 @@ export const pinterestService: DownloaderService = {
                                 resolve(fetchHtml(res.headers.location.startsWith('http') ? res.headers.location : `https://www.pinterest.com${res.headers.location}`));
                                 return;
                             }
+
+                            let stream = res;
+                            if (res.headers['content-encoding'] === 'gzip') {
+                                stream = res.pipe(zlib.createGunzip());
+                            } else if (res.headers['content-encoding'] === 'br') {
+                                stream = res.pipe(zlib.createBrotliDecompress());
+                            } else if (res.headers['content-encoding'] === 'deflate') {
+                                stream = res.pipe(zlib.createInflate());
+                            }
+
                             let data = '';
-                            res.on('data', (c: any) => data += c);
-                            res.on('end', () => resolve(data));
-                            res.on('error', reject);
+                            stream.on('data', (c: any) => data += c.toString('utf8'));
+                            stream.on('end', () => resolve(data));
+                            stream.on('error', reject);
                         });
                         req.on('error', reject);
                         req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
