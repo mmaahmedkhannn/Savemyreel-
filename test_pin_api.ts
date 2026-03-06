@@ -34,6 +34,9 @@ async function testPinResource() {
             .filter(Boolean)
             .join('; ');
 
+        const csrfMatch = cookieHeader.match(/csrftoken=([^;]+)/);
+        const csrfToken = csrfMatch ? csrfMatch[1] : '';
+
         const res = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -41,6 +44,7 @@ async function testPinResource() {
                 'Accept-Language': 'en-US,en;q=0.9',
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-Pinterest-AppState': 'active',
+                'X-CSRFToken': csrfToken,
                 'Cookie': cookieHeader
             }
         });
