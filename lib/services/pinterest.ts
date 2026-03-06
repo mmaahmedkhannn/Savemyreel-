@@ -34,17 +34,31 @@ export const pinterestService: DownloaderService = {
             } catch (err: any) {
                 console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting SEO Meta Tags fallback...`);
 
-                const fetch = require('cross-fetch');
-                const response = await fetch(url, {
-                    headers: {
-                        "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
-                    },
-                    cache: 'no-store', // CRITICAL: Stop Next.js from aggressively caching failed Pinterest states
-                    redirect: 'follow'
-                });
+                const https = require('https');
+                const fetchHtml = (targetUrl: string): Promise<string> => {
+                    return new Promise((resolve, reject) => {
+                        const req = https.get(targetUrl, {
+                            headers: {
+                                "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+                                "Accept": "text/html",
+                                "Connection": "close"
+                            }
+                        }, (res: any) => {
+                            if (res.statusCode >= 300 && res.statusCode <= 308 && res.headers.location) {
+                                resolve(fetchHtml(res.headers.location.startsWith('http') ? res.headers.location : `https://www.pinterest.com${res.headers.location}`));
+                                return;
+                            }
+                            let data = '';
+                            res.on('data', (c: any) => data += c);
+                            res.on('end', () => resolve(data));
+                            res.on('error', reject);
+                        });
+                        req.on('error', reject);
+                        req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
+                    });
+                };
 
-                if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
-                const html = await response.text();
+                const html = await fetchHtml(url);
 
                 console.log(`[Pinterest] Scraped HTML Length: ${html.length}`);
                 console.log(`[Pinterest] Scraped HTML Start: ${html.substring(0, 150)}`);
