@@ -39,6 +39,7 @@ export const pinterestService: DownloaderService = {
                     headers: {
                         "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
                     },
+                    cache: 'no-store', // CRITICAL: Stop Next.js from aggressively caching failed Pinterest states
                     redirect: 'follow'
                 });
 
