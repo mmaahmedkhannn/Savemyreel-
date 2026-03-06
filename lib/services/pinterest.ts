@@ -72,26 +72,9 @@ export const pinterestService: DownloaderService = {
                         type: "image",
                         filename: `pinterest_${Date.now()}.jpg`
                     };
-                } else {
-                    // It's a carousel (Idea Pin)
-                    const carouselItems = uniqueUrls.map((imgUrl, i) => ({
-                        url: imgUrl,
-                        thumbnail: imgUrl,
-                        type: "image" as const,
-                        filename: `pinterest_${Date.now()}_${i + 1}.jpg`
-                    }));
-
-                    return {
-                        url: uniqueUrls[0],
-                        thumbnail: uniqueUrls[0],
-                        title: "Pinterest Idea Pin (Carousel)",
-                        platform: "pinterest",
-                        type: "image",
-                        carouselItems: carouselItems,
-                        filename: `pinterest_${Date.now()}_1.jpg`
-                    };
                 }
 
+                throw new Error("No media found on this Pinterest page.");
             } // end of catch block
 
             // Handle potential image-only pins or video pins for default yt-dlp successful payloads
