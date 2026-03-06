@@ -3,6 +3,7 @@ import { facebookService } from "./facebook";
 import { tiktokService } from "./tiktok";
 import { twitterService } from "./twitter";
 import { youtubeService } from "./youtube";
+import { pinterestService } from "./pinterest";
 
 /**
  * Server-side service registry for the /api/download route.
@@ -15,6 +16,7 @@ const services: DownloaderService[] = [
     twitterService,
     tiktokService,
     youtubeService,
+    pinterestService,
 ];
 
 export function getServiceForUrl(url: string): DownloaderService | null {
