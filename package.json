@@ -21,6 +21,7 @@
     "instagram-url-direct": "^2.0.7",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
+    "puppeteer": "^24.38.0",
     "puppeteer-core": "^24.38.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
