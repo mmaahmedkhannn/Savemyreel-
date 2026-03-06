@@ -208,7 +208,7 @@ export default function InstagramDownloader() {
                             Download Instagram Videos Now →
                         </Link>
                         <p style={{ marginTop: "1.5rem", color: "var(--secondary-foreground)", fontSize: "0.875rem" }}>
-                            Also try: <Link href="/tiktok-downloader" style={{ color: "var(--primary)" }}>TikTok Downloader</Link> · <Link href="/facebook-downloader" style={{ color: "var(--primary)" }}>Facebook Downloader</Link> · <Link href="/twitter-downloader" style={{ color: "var(--primary)" }}>Twitter Downloader</Link> · <Link href="/youtube-downloader" style={{ color: "var(--primary)" }}>YouTube Downloader</Link>
+                            Also try: <Link href="/pinterest-downloader" style={{ color: "var(--primary)" }}>Pinterest Downloader</Link> · <Link href="/tiktok-downloader" style={{ color: "var(--primary)" }}>TikTok Downloader</Link> · <Link href="/facebook-downloader" style={{ color: "var(--primary)" }}>Facebook Downloader</Link> · <Link href="/twitter-downloader" style={{ color: "var(--primary)" }}>Twitter Downloader</Link> · <Link href="/youtube-downloader" style={{ color: "var(--primary)" }}>YouTube Downloader</Link>
                         </p>
                     </section>
                 </div>
