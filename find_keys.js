@@ -1,6 +1,6 @@
 const fs = require('fs');
 try {
-    const txt = fs.readFileSync('script___PWS_DATA__.json', 'utf8');
+    const txt = fs.readFileSync('script___PWS_ROUTES__.json', 'utf8');
     const jsonStr = txt.replace(/<script[^>]*>/, '').replace(/<\/script>/, '').trim();
     const data = JSON.parse(jsonStr);
 
