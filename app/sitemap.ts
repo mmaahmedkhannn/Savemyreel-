@@ -107,6 +107,66 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "monthly",
             priority: 0.7,
         },
+        {
+            url: `${BASE_URL}/blog/save-instagram-stories`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/download-youtube-shorts`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/youtube-to-mp3-converter`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/download-facebook-videos-iphone-android`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/best-instagram-video-downloaders`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/instagram-reel-download-vs-screen-recording`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/is-it-legal-to-download-youtube-videos`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/download-pinterest-videos`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/download-youtube-playlists`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: `${BASE_URL}/blog/download-instagram-photos-full-quality`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
 
         // Legal pages
         {
