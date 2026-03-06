@@ -45,6 +45,11 @@ export const pinterestService: DownloaderService = {
                         "Accept-Language": "en-US,en;q=0.5",
                         "Cache-Control": "no-cache",
                         "Pragma": "no-cache",
+                        "Sec-Fetch-Dest": "document",
+                        "Sec-Fetch-Mode": "navigate",
+                        "Sec-Fetch-Site": "none",
+                        "Sec-Fetch-User": "?1",
+                        "Upgrade-Insecure-Requests": "1"
                     },
                     redirect: 'follow'
                 });
