@@ -93,7 +93,7 @@ export const pinterestService: DownloaderService = {
 
                     if (media.images.length > 0) {
                         // Return the highest quality image (originals > 736x > 564x)
-                        const bestImage = media.images.find(u => u.includes('/originals/')) || media.images[0];
+                        const bestImage = media.images.find((u: string) => u.includes('/originals/')) || media.images[0];
                         return {
                             url: bestImage,
                             thumbnail: bestImage,
