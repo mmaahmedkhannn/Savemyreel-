@@ -25,7 +25,9 @@ async function testPinResource() {
             .map(line => {
                 const parts = line.split('\t');
                 if (parts.length >= 7) {
-                    return `${parts[5]}=${parts[6]}`;
+                    const name = parts[5].trim();
+                    const value = parts[6].replace(/\r/g, '').trim();
+                    return `${name}=${value}`;
                 }
                 return '';
             })
