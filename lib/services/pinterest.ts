@@ -32,55 +32,32 @@ export const pinterestService: DownloaderService = {
             try {
                 metadata = await fetchMediaMetadata(formattedUrl) as any;
             } catch (err: any) {
-                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting hidden PinResource API fallback...`);
-
-                // Extract the PIN ID from the URL to query the JSON API
-                const pinIdMatch = url.match(/(?:\/pin\/|\/ideas\/[^\/]+\/|\/p\/)(\d+)/);
-                if (!pinIdMatch || !pinIdMatch[1]) {
-                    throw new Error("Could not extract Pin ID for fallback API.");
-                }
-                const pinId = pinIdMatch[1];
-
-                const apiData = { "options": { "id": pinId, "field_set_key": "detailed" } };
-                const encodedData = encodeURIComponent(JSON.stringify(apiData));
-                const apiUrl = `https://www.pinterest.com/resource/PinResource/get/?source_url=/pin/${pinId}/&data=${encodedData}`;
+                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting Mobile HTML scraper fallback...`);
 
                 const fetch = require('cross-fetch');
-                const response = await fetch(apiUrl, {
+                const response = await fetch(url, {
                     headers: {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        "Accept": "application/json",
-                        "X-Requested-With": "XMLHttpRequest"
-                    }
+                        "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Mobile Safari/537.36",
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                        "Cache-Control": "no-cache",
+                        "Pragma": "no-cache",
+                    },
+                    redirect: 'follow'
                 });
 
-                if (!response.ok) throw new Error(`Failed to reach Pinterest API (${response.status}).`);
+                if (!response.ok) throw new Error(`Failed to reach Pinterest servers (${response.status}).`);
+                const html = await response.text();
 
-                const jsonResp = await response.json();
-                const pinData = jsonResp?.resource_response?.data;
+                // Extract all high-res original images from the mobile HTML response
+                const origUrlsMatch = html.match(/https:\/\/[A-Za-z0-9.-]+\.pinimg\.com\/originals\/[A-Za-z0-9.\/_%-]+\.jpg/g);
 
-                if (!pinData) {
-                    throw new Error("No media found on this Pinterest page (API).");
-                }
-
-                // Try to extract Story Pin (Idea Pin) Carousel Images
-                let extractImages: string[] = [];
-                if (pinData.story_pin_data && pinData.story_pin_data.pages) {
-                    pinData.story_pin_data.pages.forEach((page: any) => {
-                        const imgUrl = page.blocks?.[0]?.image?.images?.orig?.url;
-                        if (imgUrl) extractImages.push(imgUrl);
-                    });
-                } else if (pinData.images?.orig?.url) {
-                    // Standard Single Image Pin
-                    extractImages.push(pinData.images.orig.url);
-                }
-
-                if (extractImages.length === 0) {
-                    throw new Error("No image media found on this Pinterest page.");
+                if (!origUrlsMatch || origUrlsMatch.length === 0) {
+                    throw new Error("No media found on this Pinterest page.");
                 }
 
                 // Deduplicate URLs
-                const uniqueUrls = Array.from(new Set(extractImages));
+                const uniqueUrls = Array.from(new Set(origUrlsMatch));
 
                 if (uniqueUrls.length === 1) {
                     return {
