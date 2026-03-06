@@ -5,7 +5,15 @@ export const pinterestService: DownloaderService = {
     canHandle: (url: string) => url.includes("pinterest.com") || url.includes("pin.it"),
     extract: async (url: string): Promise<DownloadResult> => {
         try {
-            const metadata = await fetchMediaMetadata(url) as any;
+            // Normalize Pinterest URLs for yt-dlp (yt-dlp strictly expects /pin/ID format)
+            let formattedUrl = url;
+            const match = url.match(/(?:\/pin\/|\/ideas\/[^\/]+\/|\/p\/)(\d+)/);
+            if (match && match[1]) {
+                formattedUrl = `https://www.pinterest.com/pin/${match[1]}/`;
+                console.log(`[Pinterest] Normalized URL: ${url} -> ${formattedUrl}`);
+            }
+
+            const metadata = await fetchMediaMetadata(formattedUrl) as any;
 
             // Handle potential image-only pins or video pins
             const isVideo = metadata.formats && metadata.formats.length > 0 && metadata.formats.some((f: any) => f.vcodec !== "none");
