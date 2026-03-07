@@ -47,7 +47,7 @@ async function scrapeYouTubePage(videoId: string): Promise<DownloadResult> {
 
     const html = await response.text();
 
-    const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var\s|<\/script>|;)/s);
+    const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{[\s\S]+?\});\s*(?:var\s|<\/script>|;)/);
     if (!playerMatch) {
         if (html.includes("confirm you're not a bot") || html.includes("Sign in to confirm")) {
             throw new Error("YouTube bot detection triggered");
