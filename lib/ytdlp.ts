@@ -22,11 +22,14 @@ export const fetchMediaMetadata = async (url: string) => {
     const localBinPath = path.resolve(process.cwd(), "bin", `yt-dlp${binExt}`);
 
     let binPath: string;
-    if (fs.existsSync(localBinPath)) {
+    const localExists = fs.existsSync(localBinPath);
+    const localValid = localExists && fs.statSync(localBinPath).size > 0;
+
+    if (localValid) {
         binPath = localBinPath;
     } else {
         try {
-            const { stdout } = await execPromise("which yt-dlp");
+            const { stdout } = await execPromise("which yt-dlp", { timeout: 5000 });
             binPath = stdout.trim();
         } catch {
             throw new Error(`[yt-dlp error] yt-dlp binary not found at ${localBinPath} and not available in PATH`);
