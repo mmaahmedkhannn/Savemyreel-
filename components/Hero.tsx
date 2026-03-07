@@ -67,7 +67,6 @@ export default function Hero() {
                     filename: extractResult.filename,
                 }];
 
-                // Convert MediaItem[] to DownloadResult format
                 const downloadResult: DownloadResultType = {
                     url: media[0].url,
                     thumbnail: media[0].thumbnail,
@@ -75,8 +74,8 @@ export default function Hero() {
                     platform: "instagram",
                     type: media[0].type,
                     filename: media[0].filename,
-                    carouselItems: media,
-                    sourceUrl: url, // original Instagram URL for server-side download
+                    carouselItems: media.length > 0 ? media : undefined,
+                    sourceUrl: url,
                 };
 
                 setResult(downloadResult);
