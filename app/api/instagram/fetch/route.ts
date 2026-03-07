@@ -394,91 +394,144 @@ async function scrapeMainPage(shortcode: string, originalUrl: string): Promise<E
             if (!response.ok) continue;
             const html = await response.text();
 
-            const normalized = html
-                .replace(/\\\\\//g, '/')
-                .replace(/\\\//g, '/')
-                .replace(/\\"/g, '"');
-
-            const usernameMatch = normalized.match(/"username"\s*:\s*"([^"]+)"/);
+            const usernameMatch = html.match(/\\?"username\\?"\s*:\\?\s*\\?"([^"\\]+)\\?"/);
             if (usernameMatch) {
                 author = usernameMatch[1];
             }
 
-            const videoVersionsRegex = /video_versions"\s*:\s*\[([\s\S]*?)\]/g;
-            const imageVersionsRegex = /image_versions2"\s*:\s*\{[^}]*"candidates"\s*:\s*\[([\s\S]*?)\]/g;
+            const hasCarousel = html.includes('carousel_media_count');
 
-            const videoUrls: string[] = [];
-            let vMatch;
-            while ((vMatch = videoVersionsRegex.exec(normalized)) !== null) {
-                const block = vMatch[1];
-                const urlMatches = block.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/g);
-                if (urlMatches) {
-                    for (const um of urlMatches) {
-                        const extracted = um.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/);
-                        if (extracted) {
-                            const decoded = decodeEmbedUrl(extracted[1]);
-                            if (!videoUrls.includes(decoded)) {
-                                videoUrls.push(decoded);
-                                break;
-                            }
-                        }
-                    }
+            const mediaEntries: { videoUrl?: string; imageUrl?: string; mediaType: number }[] = [];
+
+            if (hasCarousel) {
+                const displayUriRegex = /display_uri\\?":\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
+                const mediaTypeRegex = /media_type\\?":\s*(\d)/g;
+
+                const displayUris: string[] = [];
+                let duMatch;
+                while ((duMatch = displayUriRegex.exec(html)) !== null) {
+                    displayUris.push(decodeEmbedUrl(duMatch[1]));
                 }
-            }
 
-            const imageUrls: string[] = [];
-            let iMatch;
-            while ((iMatch = imageVersionsRegex.exec(normalized)) !== null) {
-                const block = iMatch[1];
-                const urlMatches = block.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/g);
-                if (urlMatches) {
-                    for (const um of urlMatches) {
-                        const extracted = um.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/);
-                        if (extracted) {
-                            const decoded = decodeEmbedUrl(extracted[1]);
-                            if (!imageUrls.includes(decoded)) {
-                                imageUrls.push(decoded);
-                                break;
-                            }
-                        }
-                    }
+                const mediaTypes: number[] = [];
+                let mtMatch;
+                while ((mtMatch = mediaTypeRegex.exec(html)) !== null) {
+                    mediaTypes.push(parseInt(mtMatch[1]));
                 }
-            }
 
-            if (videoUrls.length > 0) {
-                const uniqueVideos = [...new Set(videoUrls)];
-                uniqueVideos.forEach((vUrl, i) => {
-                    media.push({
-                        url: vUrl,
-                        thumbnail: imageUrls[i] || imageUrls[0] || vUrl,
-                        type: 'video',
-                        filename: uniqueVideos.length > 1
-                            ? `instagram_${shortcode}_${i + 1}.mp4`
-                            : `instagram_${shortcode}.mp4`,
+                let idx = 0;
+                let searchFrom = 0;
+                const imageVersionPattern = /image_versions2\\?"\s*:\s*\\?\{\\?"candidates\\?"\s*:\s*\\?\[\\?\{[^}]*\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
+
+                const allImageUrls: string[] = [];
+                let ivMatch;
+                while ((ivMatch = imageVersionPattern.exec(html)) !== null) {
+                    allImageUrls.push(decodeEmbedUrl(ivMatch[1]));
+                }
+
+                const videoVersionPattern = /video_versions\\?"\s*:\s*\\?\[[^[]*?\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
+                const allVideoUrls: string[] = [];
+                let vvMatch;
+                while ((vvMatch = videoVersionPattern.exec(html)) !== null) {
+                    allVideoUrls.push(decodeEmbedUrl(vvMatch[1]));
+                }
+
+                console.log(`[Server] Carousel: ${allImageUrls.length} images, ${allVideoUrls.length} videos found`);
+
+                if (allImageUrls.length > 1) {
+                    const seen = new Set<string>();
+                    allImageUrls.forEach((imgUrl) => {
+                        if (!imgUrl.includes('s150x150') && !imgUrl.includes('s320x320') && !seen.has(imgUrl)) {
+                            seen.add(imgUrl);
+                        }
                     });
-                });
-                break;
-            }
-
-            if (imageUrls.length > 0 && videoUrls.length === 0) {
-                const uniqueImages = [...new Set(imageUrls)];
-                uniqueImages.forEach((imgUrl, i) => {
-                    if (!imgUrl.includes('s150x150') && !imgUrl.includes('s320x320')) {
+                    const uniqueImgs = [...seen];
+                    let itemIndex = 1;
+                    uniqueImgs.forEach((imgUrl) => {
                         media.push({
                             url: imgUrl,
                             thumbnail: imgUrl,
                             type: 'image',
-                            filename: uniqueImages.length > 1
-                                ? `instagram_${shortcode}_${i + 1}.jpg`
-                                : `instagram_${shortcode}.jpg`,
+                            filename: `instagram_${shortcode}_${itemIndex++}.jpg`,
+                        });
+                    });
+
+                    if (allVideoUrls.length > 0) {
+                        allVideoUrls.forEach((vUrl) => {
+                            media.push({
+                                url: vUrl,
+                                thumbnail: allImageUrls[0] || vUrl,
+                                type: 'video',
+                                filename: `instagram_${shortcode}_video.mp4`,
+                            });
                         });
                     }
-                });
+                } else if (allVideoUrls.length > 0) {
+                    allVideoUrls.forEach((vUrl, i) => {
+                        media.push({
+                            url: vUrl,
+                            thumbnail: allImageUrls[i] || allImageUrls[0] || vUrl,
+                            type: 'video',
+                            filename: allVideoUrls.length > 1
+                                ? `instagram_${shortcode}_${i + 1}.mp4`
+                                : `instagram_${shortcode}.mp4`,
+                        });
+                    });
+                }
+
                 if (media.length > 0) break;
             }
 
+            {
+                const videoVersionPattern = /video_versions\\?"\s*:\s*\\?\[[^[]*?\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
+                const videoUrls: string[] = [];
+                let vvMatch;
+                while ((vvMatch = videoVersionPattern.exec(html)) !== null) {
+                    const decoded = decodeEmbedUrl(vvMatch[1]);
+                    if (!videoUrls.includes(decoded)) videoUrls.push(decoded);
+                }
+
+                const imageVersionPattern = /image_versions2\\?"\s*:\s*\\?\{\\?"candidates\\?"\s*:\s*\\?\[\\?\{[^}]*\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
+                const imageUrls: string[] = [];
+                let ivMatch;
+                while ((ivMatch = imageVersionPattern.exec(html)) !== null) {
+                    const decoded = decodeEmbedUrl(ivMatch[1]);
+                    if (!imageUrls.includes(decoded)) imageUrls.push(decoded);
+                }
+
+                if (videoUrls.length > 0) {
+                    videoUrls.forEach((vUrl, i) => {
+                        media.push({
+                            url: vUrl,
+                            thumbnail: imageUrls[i] || imageUrls[0] || vUrl,
+                            type: 'video',
+                            filename: videoUrls.length > 1
+                                ? `instagram_${shortcode}_${i + 1}.mp4`
+                                : `instagram_${shortcode}.mp4`,
+                        });
+                    });
+                    break;
+                }
+
+                if (imageUrls.length > 0) {
+                    const filtered = imageUrls.filter(u => !u.includes('s150x150') && !u.includes('s320x320'));
+                    filtered.forEach((imgUrl, i) => {
+                        media.push({
+                            url: imgUrl,
+                            thumbnail: imgUrl,
+                            type: 'image',
+                            filename: filtered.length > 1
+                                ? `instagram_${shortcode}_${i + 1}.jpg`
+                                : `instagram_${shortcode}.jpg`,
+                        });
+                    });
+                    if (media.length > 0) break;
+                }
+            }
+
             if (media.length === 0) {
-                const mp4Matches = html.match(/https?:[^"'\s\\]*\.mp4[^"'\s\\]*/g);
+                const mp4Pattern = /https?:\\?\/\\?\/[^"'\s<>]*\.mp4[^"'\s<>]*/g;
+                const mp4Matches = html.match(mp4Pattern);
                 if (mp4Matches && mp4Matches.length > 0) {
                     const decoded = decodeEmbedUrl(mp4Matches[0]);
                     media.push({
