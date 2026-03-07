@@ -52,7 +52,7 @@ Preferred communication style: Simple, everyday language.
 
 - **Runtime:** Next.js API Routes (Node.js)
 - **Media Extraction:** Multiple strategies per platform:
-  - **YouTube:** `python3 -m yt_dlp` (pip-installed, v2026+) with `--js-runtimes node --remote-components ejs:github` for full cipher decryption; `youtubei.js` as fallback for videos with direct URLs
+  - **YouTube:** `python3 -m yt_dlp` (pip-installed, v2026+) with PO Token generation via `bgutils-js` + `jsdom` to bypass YouTube's datacenter IP bot detection; uses `--js-runtimes node --remote-components ejs:github` for cipher solving; PO tokens cached for 6 hours
   - **Instagram:** Custom `xdt_api__v1__media__shortcode__web_info` JSON parser for carousel/reel extraction
   - **Pinterest:** Direct HTTP scraping with og:meta tags + `upgradeToOriginal()` URL upgrader for full-resolution images
   - **TikTok, Facebook, Twitter:** `lib/ytdlp.ts` wrapper calling system yt-dlp binary
