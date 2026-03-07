@@ -1,5 +1,105 @@
 import { DownloaderService, DownloadResult } from "@/types";
-import { fetchMediaMetadata } from "@/lib/ytdlp";
+
+async function scrapePinterestPage(url: string): Promise<DownloadResult> {
+    const response = await fetch(url, {
+        headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "en-US,en;q=0.9",
+        },
+        redirect: "follow",
+    });
+
+    if (!response.ok) {
+        throw new Error(`Pinterest returned HTTP ${response.status}`);
+    }
+
+    const html = await response.text();
+
+    const getMeta = (property: string): string | null => {
+        const patterns = [
+            new RegExp(`<meta\\s[^>]*property=["']${property}["'][^>]*content=["']([^"']+)["']`, "i"),
+            new RegExp(`<meta\\s[^>]*content=["']([^"']+)["'][^>]*property=["']${property}["']`, "i"),
+            new RegExp(`<meta\\s[^>]*name=["']${property}["'][^>]*content=["']([^"']+)["']`, "i"),
+            new RegExp(`<meta\\s[^>]*content=["']([^"']+)["'][^>]*name=["']${property}["']`, "i"),
+        ];
+        for (const p of patterns) {
+            const m = html.match(p);
+            if (m) return m[1];
+        }
+        return null;
+    };
+
+    const ogImage = getMeta("og:image");
+    const ogTitle = getMeta("og:title") || getMeta("title") || "Pinterest Pin";
+    const ogVideo = getMeta("og:video") || getMeta("og:video:url") || getMeta("og:video:secure_url");
+
+    let videoUrl: string | null = null;
+    const videoMatches = html.match(/https?:[^\s"'<>]*\.pinimg\.com[^\s"'<>]*\/videos\/[^\s"'<>]*\.mp4/g);
+    if (videoMatches && videoMatches.length > 0) {
+        const cleaned = videoMatches.map(u => u.replace(/\\u002F/g, "/").replace(/\\\//g, "/"));
+        videoUrl = cleaned.find(u => u.includes("/720p/")) || cleaned.find(u => u.includes("/480p/")) || cleaned[0];
+    }
+    if (!videoUrl && ogVideo) {
+        videoUrl = ogVideo;
+    }
+
+    if (videoUrl) {
+        return {
+            url: videoUrl,
+            thumbnail: ogImage || videoUrl,
+            title: cleanTitle(ogTitle),
+            platform: "pinterest",
+            type: "video",
+            filename: `pinterest_${Date.now()}.mp4`,
+        };
+    }
+
+    let imageUrl = ogImage;
+    if (!imageUrl) {
+        const originals = html.match(/https?:\/\/i\.pinimg\.com\/originals\/[^\s"'<>]+\.(jpg|jpeg|png|gif|webp)/gi);
+        if (originals && originals.length > 0) {
+            imageUrl = originals[0];
+        }
+    }
+
+    if (!imageUrl) {
+        const highRes = html.match(/https?:\/\/i\.pinimg\.com\/736x\/[^\s"'<>]+\.(jpg|jpeg|png|gif|webp)/gi);
+        if (highRes && highRes.length > 0) {
+            imageUrl = highRes[0];
+        }
+    }
+
+    if (!imageUrl) {
+        throw new Error("No media found on this Pinterest page.");
+    }
+
+    imageUrl = upgradeToOriginal(imageUrl);
+
+    const ext = imageUrl.match(/\.(png|gif|webp)/i) ? imageUrl.match(/\.(png|gif|webp)/i)![1].toLowerCase() : "jpg";
+
+    return {
+        url: imageUrl,
+        thumbnail: ogImage || imageUrl,
+        title: cleanTitle(ogTitle),
+        platform: "pinterest",
+        type: "image",
+        filename: `pinterest_${Date.now()}.${ext}`,
+    };
+}
+
+function upgradeToOriginal(url: string): string {
+    return url.replace(/\/236x\/|\/474x\/|\/564x\/|\/736x\//, "/originals/");
+}
+
+function cleanTitle(title: string): string {
+    return title
+        .replace(/\s*\|\s*Pinterest\s*$/i, "")
+        .replace(/\s*-\s*Pinterest\s*$/i, "")
+        .replace(/Pin de .+ em .+\s*\|/i, "")
+        .trim()
+        .substring(0, 100) || "Pinterest Pin";
+}
 
 export const pinterestService: DownloaderService = {
     canHandle: (url: string) => url.includes("pinterest.com") || url.includes("pin.it"),
@@ -7,137 +107,29 @@ export const pinterestService: DownloaderService = {
         try {
             let formattedUrl = url;
 
-            // Step 1: Resolve pin.it shortlinks
             if (url.includes("pin.it")) {
                 try {
                     const response = await fetch(url.startsWith("http") ? url : `https://${url}`, {
                         method: "HEAD",
                         redirect: "follow",
                     });
-                    formattedUrl = response.url; // The final resolved URL
+                    formattedUrl = response.url;
                     console.log(`[Pinterest] Resolved pin.it to: ${formattedUrl}`);
                 } catch (e) {
                     console.error("[Pinterest] Failed to resolve shortlink", e);
                 }
             }
 
-            // Step 2: Normalize Pinterest URLs for yt-dlp (yt-dlp strictly expects /pin/ID format)
             const match = formattedUrl.match(/(?:\/pin\/|\/ideas\/[^\/]+\/|\/p\/)(\d+)/);
             if (match && match[1]) {
                 formattedUrl = `https://www.pinterest.com/pin/${match[1]}/`;
                 console.log(`[Pinterest] Normalized URL to: ${formattedUrl}`);
             }
 
-            let metadata;
-            try {
-                metadata = await fetchMediaMetadata(formattedUrl) as any;
-            } catch (err: any) {
-                console.log(`[Pinterest] yt-dlp failed (${err.message}). Attempting Puppeteer Headless Fallback...`);
-
-                // Pinterest has completely removed server-side og:image/og:video meta tags.
-                // The ONLY native way to extract media is to render the page with a real browser
-                // and read the video/image sources from the live DOM.
-                const puppeteer = require('puppeteer');
-                let browser;
-                try {
-                    browser = await puppeteer.launch({
-                        headless: 'new',
-                        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-                    });
-                    const page = await browser.newPage();
-
-                    // Set a realistic viewport and user agent
-                    await page.setViewport({ width: 1280, height: 900 });
-
-                    console.log(`[Pinterest] Navigating to: ${formattedUrl}`);
-                    await page.goto(formattedUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-
-                    // Extract all video and image sources from the rendered DOM
-                    const media = await page.evaluate(() => {
-                        // Get video sources (for video pins)
-                        const videos = Array.from(document.querySelectorAll('video')).map(v => {
-                            const source = v.querySelector('source');
-                            return v.src || (source ? source.src : '');
-                        }).filter(Boolean);
-
-                        // Get high-quality pinimg.com images (the actual pin content, not UI icons)
-                        const images = Array.from(document.querySelectorAll('img'))
-                            .map(i => i.src)
-                            .filter(src => src.includes('pinimg.com') && (
-                                src.includes('/originals/') || src.includes('/736x/') || src.includes('/564x/')
-                            ));
-
-                        // Get the page title for the pin
-                        const titleEl = document.querySelector('h1') || document.querySelector('[data-test-id="pin-title"]');
-                        const title = titleEl ? titleEl.textContent?.trim() : '';
-
-                        return { videos, images, title };
-                    });
-
-                    await browser.close();
-                    browser = null;
-
-                    console.log(`[Pinterest] Puppeteer found: ${media.videos.length} videos, ${media.images.length} images`);
-
-                    // Prefer video over image
-                    if (media.videos.length > 0) {
-                        return {
-                            url: media.videos[0],
-                            thumbnail: media.images.length > 0 ? media.images[0] : media.videos[0],
-                            title: media.title || "Pinterest Video",
-                            platform: "pinterest",
-                            type: "video",
-                            filename: `pinterest_${Date.now()}.mp4`
-                        };
-                    }
-
-                    if (media.images.length > 0) {
-                        // Return the highest quality image (originals > 736x > 564x)
-                        const bestImage = media.images.find((u: string) => u.includes('/originals/')) || media.images[0];
-                        return {
-                            url: bestImage,
-                            thumbnail: bestImage,
-                            title: media.title || "Pinterest Image",
-                            platform: "pinterest",
-                            type: "image",
-                            filename: `pinterest_${Date.now()}.${bestImage.includes('.png') ? 'png' : 'jpg'}`
-                        };
-                    }
-
-                    throw new Error("No media found on this Pinterest page.");
-                } catch (puppeteerErr: any) {
-                    if (browser) await browser.close();
-                    throw puppeteerErr;
-                }
-            } // end of catch block
-
-            // Handle potential image-only pins or video pins for default yt-dlp successful payloads
-            const isVideo = metadata.formats && metadata.formats.length > 0 && metadata.formats.some((f: any) => f.vcodec !== "none");
-
-            const mediaUrl = metadata.url || (metadata.formats && metadata.formats.length > 0 ? metadata.formats[metadata.formats.length - 1].url : null);
-
-            if (!mediaUrl && metadata.thumbnail) {
-                // If it's just an image pin, yt-dlp might fail to find a "video" but could return thumbnail
-                return {
-                    url: metadata.thumbnail,
-                    thumbnail: metadata.thumbnail,
-                    title: metadata.title || "Pinterest Image",
-                    platform: "pinterest",
-                    type: "image",
-                    filename: `pinterest_${metadata.id || Date.now()}.jpg`
-                };
-            }
-
-            if (!mediaUrl) throw new Error("No media found.");
-
-            return {
-                url: mediaUrl,
-                thumbnail: metadata.thumbnail,
-                title: metadata.title || "Pinterest Media",
-                platform: "pinterest",
-                type: isVideo ? "video" : "image",
-                filename: `pinterest_${metadata.id || Date.now()}.${isVideo ? 'mp4' : 'jpg'}`
-            };
+            console.log(`[Pinterest] Scraping page: ${formattedUrl}`);
+            const result = await scrapePinterestPage(formattedUrl);
+            console.log(`[Pinterest] Success: ${result.type} - ${result.title}`);
+            return result;
         } catch (e: any) {
             console.error("[Pinterest Extraction Error]:", e);
             throw new Error(`Failed to download Pinterest media: ${e.message || 'Unknown error'}`);
