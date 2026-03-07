@@ -1,7 +1,30 @@
 import { DownloaderService, DownloadResult } from "@/types";
 
+const ALLOWED_HOSTS = ["www.pinterest.com", "pinterest.com", "pin.it", "in.pinterest.com", "br.pinterest.com", "de.pinterest.com", "fr.pinterest.com", "es.pinterest.com", "it.pinterest.com", "jp.pinterest.com", "kr.pinterest.com", "nl.pinterest.com", "pt.pinterest.com", "ru.pinterest.com", "co.pinterest.com", "mx.pinterest.com", "ar.pinterest.com", "uk.pinterest.com", "au.pinterest.com"];
+
+function isAllowedPinterestHost(urlStr: string): boolean {
+    try {
+        const parsed = new URL(urlStr);
+        if (parsed.protocol !== "https:") return false;
+        const host = parsed.hostname.toLowerCase();
+        return ALLOWED_HOSTS.includes(host) || host.endsWith(".pinterest.com");
+    } catch {
+        return false;
+    }
+}
+
+function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 async function scrapePinterestPage(url: string): Promise<DownloadResult> {
-    const response = await fetch(url, {
+    if (!isAllowedPinterestHost(url)) {
+        throw new Error("Invalid Pinterest URL");
+    }
+
+    const response = await fetchWithTimeout(url, {
         headers: {
             "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
             "Accept": "text/html,application/xhtml+xml",
@@ -102,20 +125,37 @@ function cleanTitle(title: string): string {
 }
 
 export const pinterestService: DownloaderService = {
-    canHandle: (url: string) => url.includes("pinterest.com") || url.includes("pin.it"),
+    canHandle: (url: string) => {
+        try {
+            const parsed = new URL(url);
+            const host = parsed.hostname.toLowerCase();
+            return host === "pin.it" || host.endsWith("pinterest.com");
+        } catch {
+            return false;
+        }
+    },
     extract: async (url: string): Promise<DownloadResult> => {
         try {
+            if (!isAllowedPinterestHost(url)) {
+                throw new Error("Invalid Pinterest URL");
+            }
+
             let formattedUrl = url;
 
-            if (url.includes("pin.it")) {
+            if (new URL(url).hostname === "pin.it") {
                 try {
-                    const response = await fetch(url.startsWith("http") ? url : `https://${url}`, {
-                        method: "HEAD",
-                        redirect: "follow",
-                    });
+                    const response = await fetchWithTimeout(
+                        url,
+                        { method: "HEAD", redirect: "follow" },
+                        10000
+                    );
                     formattedUrl = response.url;
+                    if (!isAllowedPinterestHost(formattedUrl)) {
+                        throw new Error("Shortlink resolved to non-Pinterest URL");
+                    }
                     console.log(`[Pinterest] Resolved pin.it to: ${formattedUrl}`);
-                } catch (e) {
+                } catch (e: any) {
+                    if (e.message.includes("non-Pinterest")) throw e;
                     console.error("[Pinterest] Failed to resolve shortlink", e);
                 }
             }
