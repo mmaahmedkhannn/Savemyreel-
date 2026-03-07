@@ -200,7 +200,7 @@ async function fetchViaYoutubei(videoId: string): Promise<DownloadResult> {
         throw new Error("No combined video+audio formats available via youtubei.js");
     }
 
-    const bestUrl = mp4Combined[0].url;
+    const bestUrl: string = String(mp4Combined[0].url);
 
     const qualityOptions: QualityOption[] = [];
     const seen = new Set<string>();
