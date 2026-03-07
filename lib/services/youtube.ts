@@ -37,8 +37,40 @@ function isYouTubeUrl(url: string): boolean {
     }
 }
 
+let ytdlpInstalled = false;
+
+async function ensureYtDlp(): Promise<void> {
+    if (ytdlpInstalled) return;
+    try {
+        const { stdout } = await execFileAsync("python3", ["-m", "yt_dlp", "--version"], {
+            timeout: 10000,
+        });
+        const ver = stdout.trim();
+        console.log("[YouTube] yt-dlp version: " + ver);
+        if (ver >= "2025") {
+            ytdlpInstalled = true;
+            return;
+        }
+        console.log("[YouTube] yt-dlp version too old (" + ver + "), installing latest...");
+    } catch {
+        console.log("[YouTube] yt-dlp not found via python3 -m, installing...");
+    }
+    try {
+        await execFileAsync("python3", ["-m", "pip", "install", "--user", "--break-system-packages", "yt-dlp"], {
+            timeout: 60000,
+            env: { ...process.env, PIP_BREAK_SYSTEM_PACKAGES: "1" },
+        });
+        ytdlpInstalled = true;
+        console.log("[YouTube] yt-dlp installed successfully");
+    } catch (e: any) {
+        console.error("[YouTube] Failed to install yt-dlp:", e.message?.substring(0, 200));
+    }
+}
+
 async function fetchViaYtDlp(videoId: string): Promise<DownloadResult> {
     console.log("[YouTube] Using yt-dlp for: " + videoId);
+
+    await ensureYtDlp();
 
     const url = "https://www.youtube.com/watch?v=" + videoId;
 
@@ -61,21 +93,21 @@ async function fetchViaYtDlp(videoId: string): Promise<DownloadResult> {
         stdout = result.stdout;
         stderr = result.stderr;
     } catch (execErr: any) {
-        const errMsg = (execErr.stderr || execErr.message || "").substring(0, 300);
-        if (errMsg.includes("Private video") || errMsg.includes("Sign in")) {
-            throw new Error("This video is private or requires sign-in.");
+        const errMsg = (execErr.stderr || execErr.message || "").substring(0, 500);
+        console.error("[YouTube] yt-dlp stderr:", errMsg);
+        if (errMsg.includes("Private video")) {
+            throw new Error("This video is private.");
         }
-        if (errMsg.includes("age") || errMsg.includes("Age")) {
+        if (errMsg.includes("Sign in to confirm your age") || errMsg.includes("age-restricted")) {
             throw new Error("This video is age-restricted and cannot be downloaded.");
         }
-        if (errMsg.includes("unavailable") || errMsg.includes("not available")) {
+        if (errMsg.includes("Video unavailable") || errMsg.includes("not available in your country")) {
             throw new Error("This video is unavailable.");
         }
         if (errMsg.includes("copyright") || errMsg.includes("blocked")) {
             throw new Error("This video is blocked due to copyright restrictions.");
         }
-        console.error("[YouTube] yt-dlp stderr:", errMsg);
-        throw new Error("yt-dlp extraction failed: " + errMsg.split("\n")[0]);
+        throw new Error("yt-dlp failed: " + errMsg.split("\n").pop()?.trim());
     }
 
     if (stderr) {
@@ -249,9 +281,9 @@ export const youtubeService: DownloaderService = {
         console.log("[YouTube] Extracting video: " + videoId);
 
         const noFallbackErrors = [
-            "private or requires sign-in",
+            "This video is private",
             "age-restricted",
-            "unavailable",
+            "This video is unavailable",
             "blocked due to copyright",
         ];
 
