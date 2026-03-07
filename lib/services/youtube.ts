@@ -190,28 +190,36 @@ async function scrapeYouTubePage(videoId: string): Promise<DownloadResult> {
     }
 
     const html = await response.text();
-    console.log("[YouTube] Page length: " + html.length + ", has playerResponse: " + html.includes("ytInitialPlayerResponse"));
-
-    if (html.includes("confirm you're not a bot") || html.includes("Sign in to confirm")) {
-        console.log("[YouTube] Bot detection page served");
-        throw new Error("YouTube bot detection triggered");
-    }
+    const hasBotCheck = html.includes("confirm you're not a bot") || html.includes("Sign in to confirm");
+    console.log("[YouTube] Page length: " + html.length + ", has playerResponse: " + html.includes("ytInitialPlayerResponse") + ", hasBotCheck: " + hasBotCheck);
 
     const playerData = extractPlayerResponse(html);
-    if (!playerData) {
+
+    if (playerData) {
+        console.log("[YouTube] Player status: " + (playerData.playabilityStatus?.status || "unknown") + ", hasVideoDetails: " + !!playerData.videoDetails + ", hasStreamingData: " + !!playerData.streamingData);
+
+        if (playerData.videoDetails && playerData.streamingData) {
+            try {
+                const result = buildResultFromPlayerData(playerData, videoId);
+                console.log("[YouTube] Page scrape success: \"" + result.title + "\", " + (result.metadata as any)?.qualityOptions?.length + " quality options");
+                return result;
+            } catch (e: any) {
+                console.log("[YouTube] buildResult failed: " + e.message);
+            }
+        }
+
+        if (playerData.videoDetails && !playerData.streamingData) {
+            console.log("[YouTube] Has video details but no streaming data - trying oEmbed + Innertube combo");
+        }
+    } else {
         console.log("[YouTube] Could not extract player response JSON");
-        throw new Error("Could not find video data on YouTube page");
     }
 
-    console.log("[YouTube] Player status: " + (playerData.playabilityStatus?.status || "unknown") + ", hasVideoDetails: " + !!playerData.videoDetails + ", hasStreamingData: " + !!playerData.streamingData);
-
-    if (!playerData.videoDetails) {
-        throw new Error("No video details in player response (status: " + (playerData.playabilityStatus?.status || "unknown") + ")");
+    if (hasBotCheck) {
+        throw new Error("YouTube bot detection triggered (no usable video data in page)");
     }
 
-    const result = buildResultFromPlayerData(playerData, videoId);
-    console.log("[YouTube] Page scrape success: \"" + result.title + "\", " + (result.metadata as any)?.qualityOptions?.length + " quality options");
-    return result;
+    throw new Error("Could not find usable video data on YouTube page");
 }
 
 async function fetchViaInnertube(videoId: string): Promise<DownloadResult> {
