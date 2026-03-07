@@ -17,6 +17,8 @@ function extractVideoId(url: string): string | null {
         /youtu\.be\/([a-zA-Z0-9_-]{11})/,
         /\/embed\/([a-zA-Z0-9_-]{11})/,
         /\/shorts\/([a-zA-Z0-9_-]{11})/,
+        /\/live\/([a-zA-Z0-9_-]{11})/,
+        /\/v\/([a-zA-Z0-9_-]{11})/,
     ];
     for (const p of patterns) {
         const m = url.match(p);
@@ -25,25 +27,60 @@ function extractVideoId(url: string): string | null {
     return null;
 }
 
+function isYouTubeUrl(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.replace(/^www\./, "").replace(/^m\./, "");
+        return host === "youtube.com" || host === "youtu.be" || host === "music.youtube.com";
+    } catch {
+        return false;
+    }
+}
+
 async function fetchViaYtDlp(videoId: string): Promise<DownloadResult> {
     console.log("[YouTube] Using yt-dlp for: " + videoId);
 
     const url = "https://www.youtube.com/watch?v=" + videoId;
 
-    const { stdout } = await execFileAsync("python3", [
-        "-m", "yt_dlp",
-        "--dump-json",
-        "--no-download",
-        "--no-check-certificates",
-        "--no-warnings",
-        "--js-runtimes", "node",
-        "--remote-components", "ejs:github",
-        url,
-    ], {
-        timeout: 45000,
-        maxBuffer: 20 * 1024 * 1024,
-        env: { ...process.env, PYTHONUNBUFFERED: "1" },
-    });
+    let stdout: string;
+    let stderr: string;
+    try {
+        const result = await execFileAsync("python3", [
+            "-m", "yt_dlp",
+            "--dump-json",
+            "--no-download",
+            "--no-check-certificates",
+            "--js-runtimes", "node",
+            "--remote-components", "ejs:github",
+            url,
+        ], {
+            timeout: 45000,
+            maxBuffer: 20 * 1024 * 1024,
+            env: { ...process.env, PYTHONUNBUFFERED: "1" },
+        });
+        stdout = result.stdout;
+        stderr = result.stderr;
+    } catch (execErr: any) {
+        const errMsg = (execErr.stderr || execErr.message || "").substring(0, 300);
+        if (errMsg.includes("Private video") || errMsg.includes("Sign in")) {
+            throw new Error("This video is private or requires sign-in.");
+        }
+        if (errMsg.includes("age") || errMsg.includes("Age")) {
+            throw new Error("This video is age-restricted and cannot be downloaded.");
+        }
+        if (errMsg.includes("unavailable") || errMsg.includes("not available")) {
+            throw new Error("This video is unavailable.");
+        }
+        if (errMsg.includes("copyright") || errMsg.includes("blocked")) {
+            throw new Error("This video is blocked due to copyright restrictions.");
+        }
+        console.error("[YouTube] yt-dlp stderr:", errMsg);
+        throw new Error("yt-dlp extraction failed: " + errMsg.split("\n")[0]);
+    }
+
+    if (stderr) {
+        console.warn("[YouTube] yt-dlp warnings:", stderr.substring(0, 200));
+    }
 
     if (!stdout || stdout.trim().length === 0) {
         throw new Error("yt-dlp returned empty output");
@@ -68,16 +105,11 @@ async function fetchViaYtDlp(videoId: string): Promise<DownloadResult> {
         return (b.height || 0) - (a.height || 0);
     });
 
-    let bestUrl: string;
-    if (mp4Combined.length > 0) {
-        bestUrl = mp4Combined[0].url;
-    } else {
-        const anyWithUrl = allFormats.find(function(f: any) { return !!f.url; });
-        if (!anyWithUrl) {
-            throw new Error("No downloadable formats found");
-        }
-        bestUrl = anyWithUrl.url;
+    if (mp4Combined.length === 0) {
+        throw new Error("No combined video+audio MP4 formats available");
     }
+
+    const bestUrl = mp4Combined[0].url;
 
     const qualityOptions: QualityOption[] = [];
     const seen = new Set<string>();
@@ -164,11 +196,11 @@ async function fetchViaYoutubei(videoId: string): Promise<DownloadResult> {
         return (b.height || 0) - (a.height || 0);
     });
 
-    const bestUrl = mp4Combined.length > 0
-        ? mp4Combined[0].url
-        : directFormats.find(function(f: any) {
-            return f.mime_type && f.mime_type.startsWith("video/");
-        })?.url || directFormats[0].url;
+    if (mp4Combined.length === 0) {
+        throw new Error("No combined video+audio formats available via youtubei.js");
+    }
+
+    const bestUrl = mp4Combined[0].url;
 
     const qualityOptions: QualityOption[] = [];
     const seen = new Set<string>();
@@ -205,7 +237,7 @@ async function fetchViaYoutubei(videoId: string): Promise<DownloadResult> {
 
 export const youtubeService: DownloaderService = {
     canHandle: function(url: string) {
-        return url.includes("youtube.com") || url.includes("youtu.be") || url.includes("m.youtube.com");
+        return isYouTubeUrl(url);
     },
 
     extract: async function(url: string): Promise<DownloadResult> {
@@ -216,16 +248,29 @@ export const youtubeService: DownloaderService = {
 
         console.log("[YouTube] Extracting video: " + videoId);
 
+        const noFallbackErrors = [
+            "private or requires sign-in",
+            "age-restricted",
+            "unavailable",
+            "blocked due to copyright",
+        ];
+
         try {
             return await fetchViaYtDlp(videoId);
         } catch (e: any) {
             console.error("[YouTube] yt-dlp failed:", e.message);
+            const isDeterministic = noFallbackErrors.some(function(msg) {
+                return e.message.includes(msg);
+            });
+            if (isDeterministic) {
+                throw e;
+            }
         }
 
         try {
             return await fetchViaYoutubei(videoId);
         } catch (e: any) {
-            console.error("[YouTube] youtubei.js failed:", e.message);
+            console.error("[YouTube] youtubei.js fallback failed:", e.message);
         }
 
         throw new Error("Failed to download YouTube video. Please check the URL and try again.");
