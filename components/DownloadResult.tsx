@@ -36,30 +36,25 @@ export default function DownloadResult({ result, onReset }: Props) {
     const [selectedQuality, setSelectedQuality] = useState(0);
     const qualityOptions = result.metadata?.qualityOptions as { label: string; url: string; quality: string; ext: string }[] | undefined;
 
-    const handleDownload = (downloadFilename: string, formatOverride?: string) => {
-        const itemToDownload = hasCarousel ? result.carouselItems![selectedIndex] : result;
-        const targetUrl = itemToDownload.url;
+    const handleDownload = (downloadFilename: string, formatOverride?: string, overrideUrl?: string) => {
+        const targetUrl = overrideUrl || (hasCarousel ? result.carouselItems![selectedIndex].url : result.url);
 
         if (!targetUrl) {
             console.error("[Download] No URL available to download");
             return;
         }
 
-        // Use the new server-side proxy endpoint to bypass CORS and force download
         const streamUrl = `/api/stream?url=${encodeURIComponent(targetUrl)}&filename=${encodeURIComponent(downloadFilename || 'download.mp4')}`;
-
-        // Open in new tab to trigger download without blocking UI
         window.open(streamUrl, '_blank');
     };
 
     const handleDownloadAll = () => {
         if (!result.carouselItems) return;
 
-        // Download all items with a small delay between each
         result.carouselItems.forEach((item, index) => {
             setTimeout(() => {
-                handleDownload(item.filename || `download_${index + 1}`);
-            }, index * 500); // 500ms delay between downloads
+                handleDownload(item.filename || `download_${index + 1}`, undefined, item.url);
+            }, index * 500);
         });
     };
 
