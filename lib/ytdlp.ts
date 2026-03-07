@@ -19,12 +19,18 @@ export const fetchMediaMetadata = async (url: string) => {
     const isWindows = process.platform === "win32";
     const binExt = isWindows ? ".exe" : "";
 
-    // Explicitly resolve the binary path from the project root directory
-    const binPath = path.resolve(process.cwd(), "bin", `yt-dlp${binExt}`);
+    const localBinPath = path.resolve(process.cwd(), "bin", `yt-dlp${binExt}`);
 
-    // Check if the binary exists at the resolved path
-    if (!fs.existsSync(binPath)) {
-        throw new Error(`[yt-dlp error] yt-dlp binary not found at ${binPath}`);
+    let binPath: string;
+    if (fs.existsSync(localBinPath)) {
+        binPath = localBinPath;
+    } else {
+        try {
+            const { stdout } = await execPromise("which yt-dlp");
+            binPath = stdout.trim();
+        } catch {
+            throw new Error(`[yt-dlp error] yt-dlp binary not found at ${localBinPath} and not available in PATH`);
+        }
     }
 
     try {
