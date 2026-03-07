@@ -87,11 +87,18 @@ export default function Hero() {
                     body: JSON.stringify({ url, platform: selectedPlatform })
                 });
 
-                const data = await res.json();
-
                 if (!res.ok) {
-                    throw new Error(data.error || "Failed to download");
+                    let errorMsg = "Failed to download";
+                    try {
+                        const errData = await res.json();
+                        errorMsg = errData.error || errorMsg;
+                    } catch {
+                        errorMsg = `Server error (${res.status}). Please try again.`;
+                    }
+                    throw new Error(errorMsg);
                 }
+
+                const data = await res.json();
 
                 // Attach original URL for server-side streaming download
                 data.sourceUrl = url;
