@@ -64,10 +64,25 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Strategy 3: Instagram oEmbed API (gets thumbnail at least)
+        // Strategy 3: Main page scraper with Googlebot UA (video_versions / image_versions2)
         if (media.length === 0) {
             try {
-                console.log("[Server] Strategy 3: oEmbed API...");
+                console.log("[Server] Strategy 3: Main page scraper...");
+                const result = await scrapeMainPage(shortcode, cleanUrl);
+                media = result.media;
+                if (result.author !== "Instagram User") author = result.author;
+                if (media.length > 0) {
+                    console.log("[Server] Main page scraper succeeded:", media.length, "items");
+                }
+            } catch (e: any) {
+                console.warn("[Server] Main page scraper failed:", e.message);
+            }
+        }
+
+        // Strategy 4: Instagram oEmbed API (gets thumbnail at least)
+        if (media.length === 0) {
+            try {
+                console.log("[Server] Strategy 4: oEmbed API...");
                 const result = await oEmbedExtract(cleanUrl, shortcode);
                 media = result.media;
                 author = result.author;
@@ -79,10 +94,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Strategy 4: yt-dlp binary
+        // Strategy 5: yt-dlp binary
         if (media.length === 0) {
             try {
-                console.log("[Server] Strategy 4: yt-dlp binary...");
+                console.log("[Server] Strategy 5: yt-dlp binary...");
                 const { fetchMediaMetadata } = require('@/lib/ytdlp');
                 const metadata = await fetchMediaMetadata(cleanUrl);
 
@@ -126,10 +141,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Strategy 5: instagram-url-direct library
+        // Strategy 6: instagram-url-direct library
         if (media.length === 0) {
             try {
-                console.log("[Server] Strategy 5: instagram-url-direct...");
+                console.log("[Server] Strategy 6: instagram-url-direct...");
                 const igGet = require('instagram-url-direct');
                 const timeoutPromise = new Promise<any>((_, reject) =>
                     setTimeout(() => reject(new Error("instagram-url-direct timed out")), 8000)
@@ -352,6 +367,136 @@ async function scrapeEmbed(shortcode: string): Promise<ExtractionResult> {
     }
 
     return { media, author: "Instagram User" };
+}
+
+async function scrapeMainPage(shortcode: string, originalUrl: string): Promise<ExtractionResult> {
+    const media: MediaItem[] = [];
+    let author = "Instagram User";
+
+    const urls = [
+        originalUrl,
+        `https://www.instagram.com/p/${shortcode}/`,
+        `https://www.instagram.com/reel/${shortcode}/`,
+    ];
+
+    for (const pageUrl of urls) {
+        try {
+            const response = await fetch(pageUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                },
+                signal: AbortSignal.timeout(15000),
+                redirect: 'follow',
+            });
+
+            if (!response.ok) continue;
+            const html = await response.text();
+
+            const normalized = html
+                .replace(/\\\\\//g, '/')
+                .replace(/\\\//g, '/')
+                .replace(/\\"/g, '"');
+
+            const usernameMatch = normalized.match(/"username"\s*:\s*"([^"]+)"/);
+            if (usernameMatch) {
+                author = usernameMatch[1];
+            }
+
+            const videoVersionsRegex = /video_versions"\s*:\s*\[([\s\S]*?)\]/g;
+            const imageVersionsRegex = /image_versions2"\s*:\s*\{[^}]*"candidates"\s*:\s*\[([\s\S]*?)\]/g;
+
+            const videoUrls: string[] = [];
+            let vMatch;
+            while ((vMatch = videoVersionsRegex.exec(normalized)) !== null) {
+                const block = vMatch[1];
+                const urlMatches = block.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/g);
+                if (urlMatches) {
+                    for (const um of urlMatches) {
+                        const extracted = um.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/);
+                        if (extracted) {
+                            const decoded = decodeEmbedUrl(extracted[1]);
+                            if (!videoUrls.includes(decoded)) {
+                                videoUrls.push(decoded);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            const imageUrls: string[] = [];
+            let iMatch;
+            while ((iMatch = imageVersionsRegex.exec(normalized)) !== null) {
+                const block = iMatch[1];
+                const urlMatches = block.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/g);
+                if (urlMatches) {
+                    for (const um of urlMatches) {
+                        const extracted = um.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/);
+                        if (extracted) {
+                            const decoded = decodeEmbedUrl(extracted[1]);
+                            if (!imageUrls.includes(decoded)) {
+                                imageUrls.push(decoded);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (videoUrls.length > 0) {
+                const uniqueVideos = [...new Set(videoUrls)];
+                uniqueVideos.forEach((vUrl, i) => {
+                    media.push({
+                        url: vUrl,
+                        thumbnail: imageUrls[i] || imageUrls[0] || vUrl,
+                        type: 'video',
+                        filename: uniqueVideos.length > 1
+                            ? `instagram_${shortcode}_${i + 1}.mp4`
+                            : `instagram_${shortcode}.mp4`,
+                    });
+                });
+                break;
+            }
+
+            if (imageUrls.length > 0 && videoUrls.length === 0) {
+                const uniqueImages = [...new Set(imageUrls)];
+                uniqueImages.forEach((imgUrl, i) => {
+                    if (!imgUrl.includes('s150x150') && !imgUrl.includes('s320x320')) {
+                        media.push({
+                            url: imgUrl,
+                            thumbnail: imgUrl,
+                            type: 'image',
+                            filename: uniqueImages.length > 1
+                                ? `instagram_${shortcode}_${i + 1}.jpg`
+                                : `instagram_${shortcode}.jpg`,
+                        });
+                    }
+                });
+                if (media.length > 0) break;
+            }
+
+            if (media.length === 0) {
+                const mp4Matches = html.match(/https?:[^"'\s\\]*\.mp4[^"'\s\\]*/g);
+                if (mp4Matches && mp4Matches.length > 0) {
+                    const decoded = decodeEmbedUrl(mp4Matches[0]);
+                    media.push({
+                        url: decoded,
+                        thumbnail: decoded,
+                        type: 'video',
+                        filename: `instagram_${shortcode}.mp4`,
+                    });
+                    break;
+                }
+            }
+        } catch (e: any) {
+            console.warn(`[Server] Main page ${pageUrl} failed:`, e.message);
+            continue;
+        }
+    }
+
+    return { media, author };
 }
 
 async function oEmbedExtract(originalUrl: string, shortcode: string): Promise<ExtractionResult> {
