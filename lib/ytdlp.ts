@@ -1,9 +1,9 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import fs from "fs";
 import path from "path";
 import util from "util";
 
-const execPromise = util.promisify(exec);
+const execFileAsync = util.promisify(execFile);
 
 export interface YtDlpOutput {
     id: string;
@@ -12,50 +12,41 @@ export interface YtDlpOutput {
     thumbnail: string;
     duration?: number;
     formats?: any[];
-    ext?: string; // File extension
+    ext?: string;
 }
 
 export const fetchMediaMetadata = async (url: string) => {
-    const isWindows = process.platform === "win32";
-    const binExt = isWindows ? ".exe" : "";
+    const args = [
+        "-m", "yt_dlp",
+        "--dump-json",
+        "--no-download",
+        "--no-check-certificates",
+        "--no-warnings",
+    ];
 
-    const localBinPath = path.resolve(process.cwd(), "bin", `yt-dlp${binExt}`);
-
-    let binPath: string;
-    const localExists = fs.existsSync(localBinPath);
-    const localValid = localExists && fs.statSync(localBinPath).size > 0;
-
-    if (localValid) {
-        binPath = localBinPath;
-    } else {
-        try {
-            const { stdout } = await execPromise("which yt-dlp", { timeout: 5000 });
-            binPath = stdout.trim();
-        } catch {
-            throw new Error(`[yt-dlp error] yt-dlp binary not found at ${localBinPath} and not available in PATH`);
-        }
+    const cookiesPath = path.resolve(process.cwd(), "cookies.txt");
+    if (fs.existsSync(cookiesPath)) {
+        args.push("--cookies", cookiesPath);
     }
 
+    args.push(url);
+
+    console.log(`[yt-dlp] Invoking: python3 -m yt_dlp for ${url}`);
+
     try {
-        const cookiesArg = fs.existsSync(path.resolve(process.cwd(), "cookies.txt")) ? "--cookies cookies.txt" : "";
-        const cmd = `"${binPath}" --dump-json --no-warnings ${cookiesArg} "${url}"`;
-        console.log(`[yt-dlp] Invoking: ${cmd}`);
-        const { stdout, stderr } = await execPromise(cmd, { timeout: 30000, maxBuffer: 10 * 1024 * 1024 });
-        if (stderr && stderr.trim()) console.warn(`[yt-dlp stderr] ${stderr}`);
+        const { stdout, stderr } = await execFileAsync("python3", args, {
+            timeout: 45000,
+            maxBuffer: 20 * 1024 * 1024,
+            env: { ...process.env, PYTHONUNBUFFERED: "1" },
+        });
+        if (stderr && stderr.trim()) console.warn(`[yt-dlp stderr] ${stderr.substring(0, 200)}`);
         return JSON.parse(stdout);
     } catch (error: any) {
-        console.error("yt-dlp error details:", {
-            message: error.message,
-            stderr: error.stderr,
-            stdout: error.stdout,
-            code: error.code
-        });
-
         const stderrText = error.stderr || "";
+        console.error("[yt-dlp] error:", stderrText.substring(0, 300));
 
-        // Check for common specific errors
         if (stderrText.includes("Sign in to confirm your age") || stderrText.includes("login required")) {
-            throw new Error("This content requires authentication. Please set IG_COOKIES_BASE64 environment variable.");
+            throw new Error("This content requires authentication.");
         }
         if (stderrText.includes("Video unavailable")) {
             throw new Error("The video is unavailable or deleted.");
@@ -63,10 +54,7 @@ export const fetchMediaMetadata = async (url: string) => {
         if (stderrText.includes("private")) {
             throw new Error("This account or post is private.");
         }
-
-        // Special handling for image-only posts - don't throw, let the service handle it
         if (stderrText.includes("There is no video in this post")) {
-            // Return a special marker object that indicates this is an image-only post
             return {
                 id: "image-only",
                 title: "Instagram Image Post",
