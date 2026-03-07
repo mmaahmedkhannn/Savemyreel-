@@ -49,25 +49,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Strategy 2: Instagram Embed Page scraping
+        // Strategy 2: Main page scraper with Googlebot UA (best for carousels)
         if (media.length === 0) {
             try {
-                console.log("[Server] Strategy 2: Embed scraper...");
-                const result = await scrapeEmbed(shortcode);
-                media = result.media;
-                author = result.author;
-                if (media.length > 0) {
-                    console.log("[Server] Embed scraper succeeded:", media.length, "items");
-                }
-            } catch (e: any) {
-                console.warn("[Server] Embed scraper failed:", e.message);
-            }
-        }
-
-        // Strategy 3: Main page scraper with Googlebot UA (video_versions / image_versions2)
-        if (media.length === 0) {
-            try {
-                console.log("[Server] Strategy 3: Main page scraper...");
+                console.log("[Server] Strategy 2: Main page scraper...");
                 const result = await scrapeMainPage(shortcode, cleanUrl);
                 media = result.media;
                 if (result.author !== "Instagram User") author = result.author;
@@ -76,6 +61,21 @@ export async function POST(request: NextRequest) {
                 }
             } catch (e: any) {
                 console.warn("[Server] Main page scraper failed:", e.message);
+            }
+        }
+
+        // Strategy 3: Instagram Embed Page scraping
+        if (media.length === 0) {
+            try {
+                console.log("[Server] Strategy 3: Embed scraper...");
+                const result = await scrapeEmbed(shortcode);
+                media = result.media;
+                author = result.author;
+                if (media.length > 0) {
+                    console.log("[Server] Embed scraper succeeded:", media.length, "items");
+                }
+            } catch (e: any) {
+                console.warn("[Server] Embed scraper failed:", e.message);
             }
         }
 
@@ -351,7 +351,7 @@ async function scrapeEmbed(shortcode: string): Promise<ExtractionResult> {
                     filename: `instagram_${shortcode}.mp4`
                 });
                 break;
-            } else if (imageUrl && !imageUrl.includes('s150x150')) {
+            } else if (imageUrl && !imageUrl.includes('s150x150') && !imageUrl.includes('lookaside.instagram.com')) {
                 media.push({
                     url: imageUrl,
                     thumbnail: imageUrl,
@@ -394,158 +394,178 @@ async function scrapeMainPage(shortcode: string, originalUrl: string): Promise<E
             if (!response.ok) continue;
             const html = await response.text();
 
-            const usernameMatch = html.match(/\\?"username\\?"\s*:\\?\s*\\?"([^"\\]+)\\?"/);
-            if (usernameMatch) {
-                author = usernameMatch[1];
-            }
-
-            const hasCarousel = html.includes('carousel_media_count');
-
-            const mediaEntries: { videoUrl?: string; imageUrl?: string; mediaType: number }[] = [];
-
-            if (hasCarousel) {
-                const displayUriRegex = /display_uri\\?":\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
-                const mediaTypeRegex = /media_type\\?":\s*(\d)/g;
-
-                const displayUris: string[] = [];
-                let duMatch;
-                while ((duMatch = displayUriRegex.exec(html)) !== null) {
-                    displayUris.push(decodeEmbedUrl(duMatch[1]));
-                }
-
-                const mediaTypes: number[] = [];
-                let mtMatch;
-                while ((mtMatch = mediaTypeRegex.exec(html)) !== null) {
-                    mediaTypes.push(parseInt(mtMatch[1]));
-                }
-
-                let idx = 0;
-                let searchFrom = 0;
-                const imageVersionPattern = /image_versions2\\?"\s*:\s*\\?\{\\?"candidates\\?"\s*:\s*\\?\[\\?\{[^}]*\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
-
-                const allImageUrls: string[] = [];
-                let ivMatch;
-                while ((ivMatch = imageVersionPattern.exec(html)) !== null) {
-                    allImageUrls.push(decodeEmbedUrl(ivMatch[1]));
-                }
-
-                const videoVersionPattern = /video_versions\\?"\s*:\s*\\?\[[^[]*?\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
-                const allVideoUrls: string[] = [];
-                let vvMatch;
-                while ((vvMatch = videoVersionPattern.exec(html)) !== null) {
-                    allVideoUrls.push(decodeEmbedUrl(vvMatch[1]));
-                }
-
-                console.log(`[Server] Carousel: ${allImageUrls.length} images, ${allVideoUrls.length} videos found`);
-
-                if (allImageUrls.length > 1) {
-                    const seen = new Set<string>();
-                    allImageUrls.forEach((imgUrl) => {
-                        if (!imgUrl.includes('s150x150') && !imgUrl.includes('s320x320') && !seen.has(imgUrl)) {
-                            seen.add(imgUrl);
-                        }
-                    });
-                    const uniqueImgs = [...seen];
-                    let itemIndex = 1;
-                    uniqueImgs.forEach((imgUrl) => {
-                        media.push({
-                            url: imgUrl,
-                            thumbnail: imgUrl,
-                            type: 'image',
-                            filename: `instagram_${shortcode}_${itemIndex++}.jpg`,
-                        });
-                    });
-
-                    if (allVideoUrls.length > 0) {
-                        allVideoUrls.forEach((vUrl) => {
-                            media.push({
-                                url: vUrl,
-                                thumbnail: allImageUrls[0] || vUrl,
-                                type: 'video',
-                                filename: `instagram_${shortcode}_video.mp4`,
-                            });
-                        });
-                    }
-                } else if (allVideoUrls.length > 0) {
-                    allVideoUrls.forEach((vUrl, i) => {
-                        media.push({
-                            url: vUrl,
-                            thumbnail: allImageUrls[i] || allImageUrls[0] || vUrl,
-                            type: 'video',
-                            filename: allVideoUrls.length > 1
-                                ? `instagram_${shortcode}_${i + 1}.mp4`
-                                : `instagram_${shortcode}.mp4`,
-                        });
-                    });
-                }
-
-                if (media.length > 0) break;
-            }
-
-            {
-                const videoVersionPattern = /video_versions\\?"\s*:\s*\\?\[[^[]*?\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
-                const videoUrls: string[] = [];
-                let vvMatch;
-                while ((vvMatch = videoVersionPattern.exec(html)) !== null) {
-                    const decoded = decodeEmbedUrl(vvMatch[1]);
-                    if (!videoUrls.includes(decoded)) videoUrls.push(decoded);
-                }
-
-                const imageVersionPattern = /image_versions2\\?"\s*:\s*\\?\{\\?"candidates\\?"\s*:\s*\\?\[\\?\{[^}]*\\?"url\\?"\s*:\s*\\?"(https?:\\?\/\\?\/[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
-                const imageUrls: string[] = [];
-                let ivMatch;
-                while ((ivMatch = imageVersionPattern.exec(html)) !== null) {
-                    const decoded = decodeEmbedUrl(ivMatch[1]);
-                    if (!imageUrls.includes(decoded)) imageUrls.push(decoded);
-                }
-
-                if (videoUrls.length > 0) {
-                    videoUrls.forEach((vUrl, i) => {
-                        media.push({
-                            url: vUrl,
-                            thumbnail: imageUrls[i] || imageUrls[0] || vUrl,
-                            type: 'video',
-                            filename: videoUrls.length > 1
-                                ? `instagram_${shortcode}_${i + 1}.mp4`
-                                : `instagram_${shortcode}.mp4`,
-                        });
-                    });
+            const parsed = extractFromPageJson(html, shortcode);
+            if (parsed) {
+                if (parsed.author) author = parsed.author;
+                parsed.media.forEach(m => media.push(m));
+                if (media.length > 0) {
+                    console.log(`[Server] JSON parse succeeded: ${media.length} items`);
                     break;
                 }
-
-                if (imageUrls.length > 0) {
-                    const filtered = imageUrls.filter(u => !u.includes('s150x150') && !u.includes('s320x320'));
-                    filtered.forEach((imgUrl, i) => {
-                        media.push({
-                            url: imgUrl,
-                            thumbnail: imgUrl,
-                            type: 'image',
-                            filename: filtered.length > 1
-                                ? `instagram_${shortcode}_${i + 1}.jpg`
-                                : `instagram_${shortcode}.jpg`,
-                        });
-                    });
-                    if (media.length > 0) break;
-                }
             }
 
-            if (media.length === 0) {
-                const mp4Pattern = /https?:\\?\/\\?\/[^"'\s<>]*\.mp4[^"'\s<>]*/g;
-                const mp4Matches = html.match(mp4Pattern);
-                if (mp4Matches && mp4Matches.length > 0) {
-                    const decoded = decodeEmbedUrl(mp4Matches[0]);
-                    media.push({
-                        url: decoded,
-                        thumbnail: decoded,
-                        type: 'video',
-                        filename: `instagram_${shortcode}.mp4`,
-                    });
-                    break;
-                }
+            const fallbackResult = fallbackRegexExtract(html, shortcode);
+            if (fallbackResult.media.length > 0) {
+                fallbackResult.media.forEach(m => media.push(m));
+                if (fallbackResult.author) author = fallbackResult.author;
+                console.log(`[Server] Regex fallback succeeded: ${media.length} items`);
+                break;
             }
         } catch (e: any) {
             console.warn(`[Server] Main page ${pageUrl} failed:`, e.message);
             continue;
+        }
+    }
+
+    return { media, author };
+}
+
+function extractFromPageJson(html: string, shortcode: string): ExtractionResult | null {
+    try {
+        const marker = "xdt_api__v1__media__shortcode__web_info";
+        const markerIdx = html.indexOf(marker);
+        if (markerIdx === -1) return null;
+
+        const itemsIdx = html.indexOf('"items":[', markerIdx);
+        if (itemsIdx === -1) return null;
+
+        const arrayStart = html.indexOf("[", itemsIdx);
+        let depth = 0;
+        let inStr = false;
+        let esc = false;
+        let pos;
+
+        for (pos = arrayStart; pos < html.length && pos < arrayStart + 500000; pos++) {
+            const ch = html[pos];
+            if (esc) { esc = false; continue; }
+            if (ch === '\\') { esc = true; continue; }
+            if (ch === '"' && !inStr) { inStr = true; continue; }
+            if (ch === '"' && inStr) { inStr = false; continue; }
+            if (inStr) continue;
+            if (ch === '[' || ch === '{') depth++;
+            if (ch === ']' || ch === '}') depth--;
+            if (depth === 0) break;
+        }
+
+        const items = JSON.parse(html.substring(arrayStart, pos + 1));
+        if (!items || !items.length) return null;
+
+        const item = items[0];
+        const media: MediaItem[] = [];
+        const author = item.user?.username || item.owner?.username || "Instagram User";
+
+        if (item.carousel_media && item.carousel_media.length > 0) {
+            item.carousel_media.forEach((slide: any, i: number) => {
+                const imgUrl = slide.image_versions2?.candidates?.[0]?.url;
+                const vidUrl = slide.video_versions?.[0]?.url;
+                const isVideo = slide.media_type === 2 && vidUrl;
+
+                if (isVideo) {
+                    media.push({
+                        url: vidUrl,
+                        thumbnail: imgUrl || vidUrl,
+                        type: 'video',
+                        filename: `instagram_${shortcode}_${i + 1}.mp4`,
+                        width: slide.original_width,
+                        height: slide.original_height,
+                    });
+                } else if (imgUrl) {
+                    media.push({
+                        url: imgUrl,
+                        thumbnail: imgUrl,
+                        type: 'image',
+                        filename: `instagram_${shortcode}_${i + 1}.jpg`,
+                        width: slide.original_width,
+                        height: slide.original_height,
+                    });
+                }
+            });
+        } else {
+            const imgUrl = item.image_versions2?.candidates?.[0]?.url;
+            const vidUrl = item.video_versions?.[0]?.url;
+            const isVideo = item.media_type === 2 && vidUrl;
+
+            if (isVideo) {
+                media.push({
+                    url: vidUrl,
+                    thumbnail: imgUrl || vidUrl,
+                    type: 'video',
+                    filename: `instagram_${shortcode}.mp4`,
+                    width: item.original_width,
+                    height: item.original_height,
+                });
+            } else if (imgUrl) {
+                media.push({
+                    url: imgUrl,
+                    thumbnail: imgUrl,
+                    type: 'image',
+                    filename: `instagram_${shortcode}.jpg`,
+                    width: item.original_width,
+                    height: item.original_height,
+                });
+            }
+        }
+
+        return { media, author };
+    } catch (e: any) {
+        console.warn("[Server] JSON parse failed:", e.message);
+        return null;
+    }
+}
+
+function fallbackRegexExtract(html: string, shortcode: string): ExtractionResult {
+    const media: MediaItem[] = [];
+    let author = "Instagram User";
+
+    const usernameMatch = html.match(/\\?"username\\?"\s*:\\?\s*\\?"([^"\\]+)\\?"/);
+    if (usernameMatch) author = usernameMatch[1];
+
+    const videoVersionPattern = /video_versions\\?"\s*:\s*\\?\[[^\]]*?\\?"url\\?"\s*:\s*\\?"(https?:[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
+    const videoUrls: string[] = [];
+    let vvMatch;
+    while ((vvMatch = videoVersionPattern.exec(html)) !== null) {
+        const decoded = decodeEmbedUrl(vvMatch[1]);
+        if (!videoUrls.includes(decoded)) videoUrls.push(decoded);
+    }
+
+    const imageVersionPattern = /image_versions2\\?"\s*:\s*\\?\{\\?"candidates\\?"\s*:\s*\\?\[\\?\{[^}]*\\?"url\\?"\s*:\s*\\?"(https?:[^"\\]*(?:\\.[^"\\]*)*)\\?"/g;
+    const imageUrls: string[] = [];
+    let ivMatch;
+    while ((ivMatch = imageVersionPattern.exec(html)) !== null) {
+        const decoded = decodeEmbedUrl(ivMatch[1]);
+        if (!imageUrls.includes(decoded)) imageUrls.push(decoded);
+    }
+
+    if (videoUrls.length > 0) {
+        videoUrls.forEach((vUrl, i) => {
+            media.push({
+                url: vUrl,
+                thumbnail: imageUrls[i] || imageUrls[0] || vUrl,
+                type: 'video',
+                filename: videoUrls.length > 1 ? `instagram_${shortcode}_${i + 1}.mp4` : `instagram_${shortcode}.mp4`,
+            });
+        });
+    } else if (imageUrls.length > 0) {
+        const filtered = imageUrls.filter(u => !u.includes('s150x150') && !u.includes('s320x320') && !u.includes('lookaside.instagram.com'));
+        filtered.forEach((imgUrl, i) => {
+            media.push({
+                url: imgUrl,
+                thumbnail: imgUrl,
+                type: 'image',
+                filename: filtered.length > 1 ? `instagram_${shortcode}_${i + 1}.jpg` : `instagram_${shortcode}.jpg`,
+            });
+        });
+    }
+
+    if (media.length === 0) {
+        const ogImg = html.match(/property="og:image"\s+content="([^"]+)"/);
+        if (ogImg && !ogImg[1].includes('lookaside.instagram.com')) {
+            media.push({
+                url: ogImg[1],
+                thumbnail: ogImg[1],
+                type: 'image',
+                filename: `instagram_${shortcode}.jpg`,
+            });
         }
     }
 
