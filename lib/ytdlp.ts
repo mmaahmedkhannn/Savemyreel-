@@ -34,9 +34,11 @@ export const fetchMediaMetadata = async (url: string) => {
     }
 
     try {
-        console.log(`[yt-dlp] Invoking: ${binPath} --dump-json --no-warnings --cookies cookies.txt "${url}"`);
-        const { stdout, stderr } = await execPromise(`"${binPath}" --dump-json --no-warnings --cookies cookies.txt "${url}"`);
-        if (stderr.trim()) console.warn(`[yt-dlp stderr] ${stderr}`);
+        const cookiesArg = fs.existsSync(path.resolve(process.cwd(), "cookies.txt")) ? "--cookies cookies.txt" : "";
+        const cmd = `"${binPath}" --dump-json --no-warnings ${cookiesArg} "${url}"`;
+        console.log(`[yt-dlp] Invoking: ${cmd}`);
+        const { stdout, stderr } = await execPromise(cmd, { timeout: 30000, maxBuffer: 10 * 1024 * 1024 });
+        if (stderr && stderr.trim()) console.warn(`[yt-dlp stderr] ${stderr}`);
         return JSON.parse(stdout);
     } catch (error: any) {
         console.error("yt-dlp error details:", {
