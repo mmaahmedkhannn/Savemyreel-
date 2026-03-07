@@ -67,26 +67,133 @@ async function ensureYtDlp(): Promise<void> {
     }
 }
 
+let cachedPoToken: { token: string; visitorData: string; expiresAt: number } | null = null;
+
+async function generatePoToken(): Promise<{ token: string; visitorData: string } | null> {
+    if (cachedPoToken && Date.now() < cachedPoToken.expiresAt) {
+        console.log("[YouTube] Using cached PO token");
+        return { token: cachedPoToken.token, visitorData: cachedPoToken.visitorData };
+    }
+
+    try {
+        console.log("[YouTube] Generating PO token...");
+        const { BG } = await import("bgutils-js");
+        const { JSDOM } = await import("jsdom");
+        const { Innertube } = await import("youtubei.js");
+
+        const youtube = await Innertube.create({ generate_session_locally: true });
+        const visitorData = youtube.session.context.client.visitorData;
+
+        if (!visitorData) {
+            console.error("[YouTube] Failed to get visitor data");
+            return null;
+        }
+
+        const dom = new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", {
+            url: "https://www.youtube.com",
+            pretendToBeVisual: true,
+        });
+
+        const prevWindow = (globalThis as any).window;
+        const prevDocument = (globalThis as any).document;
+        const prevLocation = (globalThis as any).location;
+        const prevOrigin = (globalThis as any).origin;
+
+        Object.assign(globalThis, {
+            window: dom.window,
+            document: dom.window.document,
+            location: dom.window.location,
+            origin: dom.window.origin,
+        });
+
+        try {
+            const requestKey = "O43z0dpjhgX20SCx4KAo";
+
+            const bgConfig = {
+                fetch: (input: any, init: any) => fetch(input, init),
+                globalObj: globalThis,
+                identifier: visitorData,
+                requestKey: requestKey,
+            };
+
+            const challenge = await BG.Challenge.create(bgConfig);
+            if (!challenge) {
+                console.error("[YouTube] Failed to create BotGuard challenge");
+                return null;
+            }
+
+            const interpreterJs = challenge.interpreterJavascript?.privateDoNotAccessOrElseSafeScriptWrappedValue;
+            if (interpreterJs) {
+                new Function(interpreterJs)();
+            }
+
+            const poTokenResult = await BG.PoToken.generate({
+                program: challenge.program,
+                globalName: challenge.globalName,
+                bgConfig,
+            });
+
+            const token = poTokenResult.poToken;
+            if (!token) {
+                console.error("[YouTube] PO token generation returned empty");
+                return null;
+            }
+
+            cachedPoToken = {
+                token: token,
+                visitorData: visitorData,
+                expiresAt: Date.now() + 6 * 60 * 60 * 1000,
+            };
+
+            console.log("[YouTube] PO token generated successfully (length: " + token.length + ")");
+            return { token, visitorData };
+        } finally {
+            Object.assign(globalThis, {
+                window: prevWindow,
+                document: prevDocument,
+                location: prevLocation,
+                origin: prevOrigin,
+            });
+            dom.window.close();
+        }
+    } catch (e: any) {
+        console.error("[YouTube] PO token generation failed:", e.message?.substring(0, 200));
+        return null;
+    }
+}
+
 async function fetchViaYtDlp(videoId: string): Promise<DownloadResult> {
     console.log("[YouTube] Using yt-dlp for: " + videoId);
 
     await ensureYtDlp();
 
+    const poData = await generatePoToken();
+
     const url = "https://www.youtube.com/watch?v=" + videoId;
+
+    const args = [
+        "-m", "yt_dlp",
+        "--dump-json",
+        "--no-download",
+        "--no-check-certificates",
+        "--js-runtimes", "node",
+        "--remote-components", "ejs:github",
+    ];
+
+    if (poData) {
+        args.push("--extractor-args",
+            "youtube:po_token=web.gvs+" + poData.token +
+            ";visitor_data=" + poData.visitorData
+        );
+    }
+
+    args.push(url);
 
     let stdout: string;
     let stderr: string;
     try {
-        const result = await execFileAsync("python3", [
-            "-m", "yt_dlp",
-            "--dump-json",
-            "--no-download",
-            "--no-check-certificates",
-            "--js-runtimes", "node",
-            "--remote-components", "ejs:github",
-            url,
-        ], {
-            timeout: 45000,
+        const result = await execFileAsync("python3", args, {
+            timeout: 60000,
             maxBuffer: 20 * 1024 * 1024,
             env: { ...process.env, PYTHONUNBUFFERED: "1" },
         });
@@ -196,77 +303,6 @@ async function fetchViaYtDlp(videoId: string): Promise<DownloadResult> {
     };
 }
 
-async function fetchViaYoutubei(videoId: string): Promise<DownloadResult> {
-    console.log("[YouTube] Using youtubei.js fallback for: " + videoId);
-
-    const { Innertube } = await import("youtubei.js");
-    const youtube = await Innertube.create({ generate_session_locally: true });
-    const info = await youtube.getBasicInfo(videoId);
-
-    const title = info.basic_info.title || "YouTube Video";
-    const author = info.basic_info.author || "";
-    const duration = info.basic_info.duration || 0;
-    const thumbnails = info.basic_info.thumbnail || [];
-    const thumbnail = thumbnails.length > 0
-        ? thumbnails[thumbnails.length - 1].url
-        : "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg";
-
-    const formats = info.streaming_data?.formats || [];
-    const adaptiveFormats = info.streaming_data?.adaptive_formats || [];
-
-    const directFormats = [...formats, ...adaptiveFormats].filter(function(f: any) {
-        return !!f.url;
-    });
-
-    if (directFormats.length === 0) {
-        throw new Error("No direct download URLs available");
-    }
-
-    const mp4Combined = directFormats.filter(function(f: any) {
-        return f.mime_type && f.mime_type.startsWith("video/mp4") && f.has_audio;
-    }).sort(function(a: any, b: any) {
-        return (b.height || 0) - (a.height || 0);
-    });
-
-    if (mp4Combined.length === 0) {
-        throw new Error("No combined video+audio formats available via youtubei.js");
-    }
-
-    const bestUrl: string = String(mp4Combined[0].url);
-
-    const qualityOptions: QualityOption[] = [];
-    const seen = new Set<string>();
-
-    for (const fmt of mp4Combined) {
-        const quality = (fmt as any).quality_label || ((fmt as any).height + "p");
-        if (!seen.has(quality)) {
-            seen.add(quality);
-            qualityOptions.push({
-                label: "MP4 " + quality,
-                url: (fmt as any).url,
-                quality: quality,
-                ext: "mp4",
-            });
-        }
-    }
-
-    console.log("[YouTube] youtubei.js success: \"" + title + "\", " + qualityOptions.length + " quality options");
-
-    return {
-        url: bestUrl,
-        thumbnail: thumbnail,
-        title: title,
-        platform: "youtube",
-        type: "video",
-        filename: "youtube_" + videoId + ".mp4",
-        metadata: {
-            qualityOptions: qualityOptions,
-            duration: duration,
-            uploader: author,
-        },
-    };
-}
-
 export const youtubeService: DownloaderService = {
     canHandle: function(url: string) {
         return isYouTubeUrl(url);
@@ -297,12 +333,6 @@ export const youtubeService: DownloaderService = {
             if (isDeterministic) {
                 throw e;
             }
-        }
-
-        try {
-            return await fetchViaYoutubei(videoId);
-        } catch (e: any) {
-            console.error("[YouTube] youtubei.js fallback failed:", e.message);
         }
 
         throw new Error("Failed to download YouTube video. Please check the URL and try again.");
